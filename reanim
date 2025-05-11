@@ -486,12 +486,18 @@ end
 local function initializePreloading()
     loadFavorites()
     loadCustomAnimations()
-    preloadAnimations(favoriteAnimations)
+    -- Only preload the first 10 favorite animations if there are more than 10
+    local favCount = 0
+    local favToPreload = {}
+    for animName, animId in pairs(favoriteAnimations) do
+        favToPreload[animName] = animId
+        favCount = favCount + 1
+        if favCount >= 10 then break end
+    end
+    preloadAnimations(favToPreload)
     preloadAnimations(customAnimations)
     preloadAudios()
 end
-
-task.spawn(initializePreloading)
 
 local function scaleCFrame(cf, scale)
     local pos = cf.Position * scale
@@ -2130,8 +2136,9 @@ local function createCustomAnimationsGui()
     contentFrame.BackgroundTransparency = 1
     contentFrame.Parent = mainFrame
 
+    -- Redesigned input area for custom animations
     local inputFrame = Instance.new("Frame")
-    inputFrame.Size = UDim2.new(0.9, 0, 0, 90)
+    inputFrame.Size = UDim2.new(0.9, 0, 0, 45)
     inputFrame.Position = UDim2.new(0.05, 0, 0, 10)
     inputFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     inputFrame.BorderSizePixel = 0
@@ -2140,10 +2147,11 @@ local function createCustomAnimationsGui()
     inputCorner.Parent = inputFrame
     inputFrame.Parent = contentFrame
 
+    -- Animation Name box (smaller, left)
     local nameBox = Instance.new("TextBox")
-    nameBox.Size = UDim2.new(0.95, 0, 0, 35)
-    nameBox.Position = UDim2.new(0.025, 0, 0, 10)
-    nameBox.PlaceholderText = "Animation Name"
+    nameBox.Size = UDim2.new(0.38, -4, 0, 30)
+    nameBox.Position = UDim2.new(0.02, 0, 0.5, -15)
+    nameBox.PlaceholderText = "Name"
     nameBox.Text = ""
     nameBox.TextColor3 = Color3.fromRGB(220, 220, 220)
     nameBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
@@ -2151,15 +2159,28 @@ local function createCustomAnimationsGui()
     nameBox.Font = Enum.Font.Gotham
     nameBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
     nameBox.BorderSizePixel = 0
+    nameBox.TextWrapped = true
+    nameBox.TextScaled = false
+    nameBox.TextSize = 14
+    nameBox.Focused:Connect(function()
+        nameBox.TextScaled = true
+    end)
+    nameBox.FocusLost:Connect(function()
+        if nameBox.Text == "" then
+            nameBox.TextScaled = false
+            nameBox.TextSize = 14
+        end
+    end)
     local nameCorner = Instance.new("UICorner")
     nameCorner.CornerRadius = UDim.new(0, 6)
     nameCorner.Parent = nameBox
     nameBox.Parent = inputFrame
 
+    -- Animation ID box (smaller, center)
     local idBox = Instance.new("TextBox")
-    idBox.Size = UDim2.new(0.95, 0, 0, 35)
-    idBox.Position = UDim2.new(0.025, 0, 0, 50)
-    idBox.PlaceholderText = "Animation ID"
+    idBox.Size = UDim2.new(0.38, -4, 0, 30)
+    idBox.Position = UDim2.new(0.42, 0, 0.5, -15)
+    idBox.PlaceholderText = "ID"
     idBox.Text = ""
     idBox.TextColor3 = Color3.fromRGB(220, 220, 220)
     idBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
@@ -2167,34 +2188,49 @@ local function createCustomAnimationsGui()
     idBox.Font = Enum.Font.Gotham
     idBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
     idBox.BorderSizePixel = 0
+    idBox.TextWrapped = true
+    idBox.TextScaled = false
+    idBox.TextSize = 14
+    idBox.Focused:Connect(function()
+        idBox.TextScaled = true
+    end)
+    idBox.FocusLost:Connect(function()
+        if idBox.Text == "" then
+            idBox.TextScaled = false
+            idBox.TextSize = 14
+        end
+    end)
     local idCorner = Instance.new("UICorner")
     idCorner.CornerRadius = UDim.new(0, 6)
     idCorner.Parent = idBox
     idBox.Parent = inputFrame
 
-    local createButton = Instance.new("TextButton")
-    createButton.Size = UDim2.new(0.4, 0, 0, 35)
-    createButton.Position = UDim2.new(0.3, 0, 0, 105)
-    createButton.Text = "Create"
-    createButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    createButton.TextSize = 16
-    createButton.Font = Enum.Font.GothamSemibold
-    createButton.BackgroundColor3 = Color3.fromRGB(60, 120, 255)
-    createButton.BorderSizePixel = 0
-    local createCorner = Instance.new("UICorner")
-    createCorner.CornerRadius = UDim.new(0, 6)
-    createCorner.Parent = createButton
-    local createGradient = Instance.new("UIGradient")
-    createGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 120, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 140, 255))
-    }
-    createGradient.Parent = createButton
-    createButton.Parent = contentFrame
+    -- Add button (right, dark theme, blue accent on hover)
+    local addButton = Instance.new("TextButton")
+    addButton.Size = UDim2.new(0.18, 0, 0, 30)
+    addButton.Position = UDim2.new(0.81, 0, 0.5, -15)
+    addButton.Text = "Add"
+    addButton.TextColor3 = Color3.fromRGB(220, 220, 255)
+    addButton.TextSize = 15
+    addButton.Font = Enum.Font.GothamSemibold
+    addButton.BackgroundColor3 = Color3.fromRGB(35, 40, 60)
+    addButton.BorderSizePixel = 0
+    local addCorner = Instance.new("UICorner")
+    addCorner.CornerRadius = UDim.new(0, 6)
+    addCorner.Parent = addButton
+    addButton.Parent = inputFrame
+    -- Blue accent on hover
+    addButton.MouseEnter:Connect(function()
+        addButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+    end)
+    addButton.MouseLeave:Connect(function()
+        addButton.BackgroundColor3 = Color3.fromRGB(35, 40, 60)
+    end)
 
+    -- Move search bar up, just below inputFrame
     local searchBox = Instance.new("TextBox")
-    searchBox.Size = UDim2.new(0.9, 0, 0, 35)
-    searchBox.Position = UDim2.new(0.05, 0, 0, 155)
+    searchBox.Size = UDim2.new(0.9, 0, 0, 30)
+    searchBox.Position = UDim2.new(0.05, 0, 0, 60)
     searchBox.PlaceholderText = "Search custom animations..."
     searchBox.Text = ""
     searchBox.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -2208,9 +2244,10 @@ local function createCustomAnimationsGui()
     searchCorner.Parent = searchBox
     searchBox.Parent = contentFrame
 
+    -- Move scrollFrame up, just below searchBox, and make it fill up to the speed bar
     local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(0.9, 0, 0, 140)
-    scrollFrame.Position = UDim2.new(0.05, 0, 0, 200)
+    scrollFrame.Size = UDim2.new(0.9, 0, 0, 250)
+    scrollFrame.Position = UDim2.new(0.05, 0, 0, 100)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
     scrollFrame.ScrollBarThickness = 4
@@ -2476,7 +2513,7 @@ local function createCustomAnimationsGui()
         scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yOffset)
     end
 
-    createButton.MouseButton1Click:Connect(function()
+    addButton.MouseButton1Click:Connect(function()
         local animName = nameBox.Text
         local animId = idBox.Text
         if animName ~= "" and animId ~= "" then
@@ -2667,7 +2704,7 @@ local function createDraggableGui(getGhostEnabled, toggleGhost)
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    screenGui.Enabled = true
+    screenGui.Enabled = false
 
     local shadowContainer = Instance.new("Frame")
     shadowContainer.Name = "shadowContainer"
@@ -3227,15 +3264,88 @@ local function createDraggableGui(getGhostEnabled, toggleGhost)
         end
     end)
 
-    return screenGui
+    return screenGui, mainFrame, shadowContainer
 end
 
-local animationListGui = createAnimationListGui()
-local customAnimationsGui = createCustomAnimationsGui()
-local mainGui = createDraggableGui(
-    function() return ghostEnabled end,
-    setGhostEnabled
-)
+-- Hide the main GUI initially
+-- mainGui.Enabled = false
+
+-- Fade-in function for the GUI
+local function fadeInGui(gui, duration, mainFrame, shadowContainer, finalMainPos, finalShadowPos)
+    -- Store original transparencies for restoration
+    local originalTransparencies = {}
+    -- Set initial transparency for all GUI elements
+    for _, obj in pairs(gui:GetDescendants()) do
+        if obj:IsA("GuiObject") then
+            originalTransparencies[obj] = {
+                BackgroundTransparency = obj.BackgroundTransparency,
+                TextTransparency = (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox")) and obj.TextTransparency or nil,
+                ImageTransparency = obj:IsA("ImageLabel") and obj.ImageTransparency or nil
+            }
+            -- Set to fully transparent initially
+            obj.BackgroundTransparency = 1
+            if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+                obj.TextTransparency = 1
+            end
+            if obj:IsA("ImageLabel") then
+                obj.ImageTransparency = 1
+            end
+        end
+    end
+    -- Set initial positions to the right of the screen for slide-in
+    if mainFrame and finalMainPos then
+        mainFrame.Position = UDim2.new(1, 100, finalMainPos.Y.Scale, finalMainPos.Y.Offset)
+    end
+    if shadowContainer and finalShadowPos then
+        shadowContainer.Position = UDim2.new(1, 100, finalShadowPos.Y.Scale, finalShadowPos.Y.Offset)
+    end
+    -- Enable the GUI
+    gui.Enabled = true
+    -- Create tweens to fade in
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+    for obj, orig in pairs(originalTransparencies) do
+        if obj:IsA("GuiObject") then
+            local tweenProps = {}
+            if orig.BackgroundTransparency ~= nil then
+                tweenProps.BackgroundTransparency = orig.BackgroundTransparency
+            end
+            if orig.TextTransparency ~= nil then
+                tweenProps.TextTransparency = orig.TextTransparency
+            end
+            if orig.ImageTransparency ~= nil then
+                tweenProps.ImageTransparency = orig.ImageTransparency
+            end
+            game:GetService("TweenService"):Create(obj, tweenInfo, tweenProps):Play()
+        end
+    end
+    -- Tween the mainFrame and shadowContainer positions to their final positions
+    if mainFrame and finalMainPos then
+        game:GetService("TweenService"):Create(mainFrame, tweenInfo, {Position = finalMainPos}):Play()
+    end
+    if shadowContainer and finalShadowPos then
+        game:GetService("TweenService"):Create(shadowContainer, tweenInfo, {Position = finalShadowPos}):Play()
+    end
+end
+
+-- Modified preloading to fade in GUI after loading
+local function initializePreloadingAndShowGui()
+    initializePreloading() -- Your existing preloading function
+    -- Create the GUIs after preloading
+    local animationListGui = createAnimationListGui()
+    local customAnimationsGui = createCustomAnimationsGui()
+    local mainGui, mainFrame, shadowContainer = createDraggableGui(
+        function() return ghostEnabled end,
+        setGhostEnabled
+    )
+    -- Start with GUI disabled and fade it in with slide from top
+    mainGui.Enabled = false
+    -- Get intended final positions
+    local finalMainPos = UDim2.new(0.5, -160, 0.5, -130)
+    local finalShadowPos = UDim2.new(0.5, -176, 0.5, -146)
+    fadeInGui(mainGui, 0.5, mainFrame, shadowContainer, finalMainPos, finalShadowPos)
+end
+
+task.spawn(initializePreloadingAndShowGui)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
     if gameProcessedEvent then return end
@@ -3251,17 +3361,3 @@ UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
         end
     end
 end)
-
--- Create GUI elements initially transparent and offset
-mainGui.Alpha = 0
-mainGui.Y = mainGui.Y - 50  -- Start position offset
-
--- Load resources first then animate
-local load_co = coroutine.wrap(function()
-    LoadResources()  -- Existing loading logic
-    Tween(mainGui, 0.5, {
-        Alpha = 1,
-        Y = mainGui.Y + 50
-    }, 'outQuad')
-end)
-load_co()
