@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 
 -- Proxy server configuration
-local PROXY_URL = "https://leakcheck.0riginalwarrior55.workers.dev/query"
+local PROXY_URL = "https://stalked.0riginalwarrior55.workers.dev/query"
 local FREE_API_URL = "https://leakcheck.io/api/public?check="
 
 -- Colors for different states
