@@ -2755,16 +2755,41 @@ local function createDraggableGui(getGhostEnabled, toggleGhost)
     titleCorner.Parent = titleBar
     titleBar.Parent = mainFrame
 
+    -- Main title: stalkie.gg (replaces 'Reanimation')
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(0.7, 0, 1, 0)
     titleLabel.Position = UDim2.new(0.05, 0, 0, 0)
-    titleLabel.Text = "Reanimation"
-    titleLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
+    titleLabel.Text = "stalkie.gg"
+    titleLabel.TextColor3 = Color3.fromRGB(0, 180, 255)
     titleLabel.TextSize = 20
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.BackgroundTransparency = 1
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.RichText = true
     titleLabel.Parent = titleBar
+
+    -- Per-letter light blue wave animation (looping)
+    local baseText = "stalkie.gg"
+    local baseColor = Color3.fromRGB(0, 180, 255)
+    local waveColor = Color3.fromRGB(120, 220, 255) -- light blue
+    local waveLength = 2
+    local waveSpeed = 4
+    local t = 0
+    RunService.Heartbeat:Connect(function(dt)
+        t = t + dt
+        local rich = ""
+        for i = 1, #baseText do
+            local c = baseText:sub(i, i)
+            local phase = (t * waveSpeed - i / waveLength)
+            local fade = 0.5 + 0.5 * math.sin(phase)
+            local r = math.floor((baseColor.R + (waveColor.R - baseColor.R) * fade) * 255)
+            local g = math.floor((baseColor.G + (waveColor.G - baseColor.G) * fade) * 255)
+            local b = math.floor((baseColor.B + (waveColor.B - baseColor.B) * fade) * 255)
+            local color = string.format("rgb(%d,%d,%d)", r, g, b)
+            rich = rich .. string.format('<font color="%s"><b>%s</b></font>', color, c)
+        end
+        titleLabel.Text = rich
+    end)
 
     local minimizeButton = Instance.new("TextButton")
     minimizeButton.Size = UDim2.new(0, 40, 0, 40)
