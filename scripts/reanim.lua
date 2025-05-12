@@ -619,19 +619,18 @@ local function setGhostEnabled(newState)
     ghostEnabled = newState
 
     local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
-    local BlinkLocal = nil
-    
+    local Packets = nil
     if not hasDefaultRagdollEvents then
         local success, module = pcall(function()
-            return require(ReplicatedStorage:WaitForChild("LocalModules"):WaitForChild("Backend"):WaitForChild("BlinkLocal"))
+            return require(ReplicatedStorage:WaitForChild("LocalModules"):WaitForChild("Backend"):WaitForChild("Packets"))
         end)
         if success then
-            BlinkLocal = module
+            Packets = module
         else
-            warn("Failed to load BlinkLocal module!")
+            warn("Failed to load Packets module!")
         end
     end
-
+    
     if ghostEnabled then
         local char = LocalPlayer.Character
         if not char then
@@ -696,7 +695,7 @@ local function setGhostEnabled(newState)
             originalAnimateScript.Disabled = true
         end
 
-        if BlinkLocal then
+        if Packets then
             resetNeckOrientation(originalCharacter, false)
             resetNeckOrientation(ghostClone, true)
         end
@@ -730,8 +729,8 @@ local function setGhostEnabled(newState)
                 else
                     warn("RagdollEvent not found!")
                 end
-            elseif BlinkLocal then
-                BlinkLocal.Ragdoll.Fire(true)
+            elseif Packets then
+                Packets.Ragdoll:Fire(true)
                 suppressHeadMovement()
             end
             task.delay(0, function()
@@ -759,8 +758,8 @@ local function setGhostEnabled(newState)
                 else
                     warn("UnragdollEvent not found!")
                 end
-            elseif BlinkLocal then
-                BlinkLocal.Ragdoll.Fire(false)
+            elseif Packets then
+                Packets.Ragdoll:Fire(false)
                 restoreHeadMovement()
             end
             task.wait(0.1)
