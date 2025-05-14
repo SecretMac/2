@@ -5,7 +5,7 @@ local blacklist = {
     "3itx"
 }
 
--- Check if the current user is blacklisted (username or display name)
+-- Check username and display name
 local player = game.Players.LocalPlayer
 local username = player.Name
 local displayName = player.DisplayName
@@ -100,8 +100,8 @@ for _, blacklistedUser in ipairs(blacklist) do
             end)
         end)
 
-        return false -- Halt script execution
+        return false -- Halt execution
     end
 end
 
-return true -- Allow script to continue if not blacklisted
+return true -- Allow script to continue
