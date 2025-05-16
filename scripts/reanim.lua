@@ -3,6 +3,68 @@ local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- File handling functions
+local function ensureStalkieFolder()
+    pcall(function()
+        if not isfolder("Stalkie") then
+            makefolder("Stalkie")
+        end
+        if not isfolder("Stalkie/intro") then
+            makefolder("Stalkie/intro")
+        end
+    end)
+end
+
+local function fileExists(filepath)
+    return pcall(function()
+        readfile(filepath)
+    end)
+end
+
+-- Function to fetch and save the edit icon
+local function fetchAndSaveEditIcon()
+    local iconUrl = "https://raw.githubusercontent.com/SystemNasa/roblox/refs/heads/main/intro/white.png"
+    local iconFilePath = "Stalkie/intro/white.png"
+    
+    -- First ensure the folder exists
+    ensureStalkieFolder()
+    
+    -- Check if the file already exists
+    if fileExists(iconFilePath) then
+        return iconFilePath
+    end
+    
+    -- Try to fetch and save the icon
+    local success, iconData = pcall(function()
+        return game:HttpGet(iconUrl)
+    end)
+    
+    if success and iconData then
+        writefile(iconFilePath, iconData)
+        return iconFilePath
+    else
+        warn("Failed to fetch edit icon: " .. (iconData or "Unknown error"))
+        return nil
+    end
+end
+
+-- Function to get edit icon as a content ID
+local function getEditIconAsContent()
+    local iconFilePath = "Stalkie/intro/white.png"
+    
+    -- Ensure folder and file exist
+    fetchAndSaveEditIcon()
+    
+    -- Check if the file exists now
+    if fileExists(iconFilePath) then
+        -- Convert to content ID
+        return getcustomasset(iconFilePath)
+    else
+        -- Fallback
+        return ""
+    end
+end
 local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
@@ -32,14 +94,25 @@ local bodyParts = {
     "RightUpperLeg", "RightLowerLeg", "RightFoot"
 }
 
+local idleAnimationId = ""
+local isPlayingIdle = false
+local isPlayingRun = false
+local runAnimationId = ""
+local jumpAnimationId = ""
+local isPlayingJump = false
+local idleCheckConnection = nil
+local lastMovementTime = 0
+local idleDelay = 3 -- seconds to wait before playing idle animation
+
 local animationState = {
     isRunning = false,
     currentId = nil,
+    currentName = nil,
     keyframes = nil,
-    totalDuration = 0,
     elapsedTime = 0,
+    totalDuration = 0,
     speed = 1,
-    connection = nil
+    connection = nil,
 }
 
 local BuiltInAnimationsR15 = {}
@@ -159,24 +232,29 @@ local hasCreatedFavoritesFile = false
 local hasCreatedKeybindsFile = false
 local hasCreatedCustomAnimationsFile = false
 
-local function saveFavorites()
+local function saveCustomAnimations()
     ensureStalkieFolder()
-    local favoritesToSave = {}
-    for animName, animId in pairs(favoriteAnimations) do
-        favoritesToSave[animName] = tostring(animId)
+    local customToSave = {
+        animations = {},
+        idle_animation_id = idleAnimationId or "",
+        run_animation_id = runAnimationId or "",
+        jump_animation_id = jumpAnimationId or ""
+    }
+    for animName, animId in pairs(customAnimations) do
+        customToSave.animations[animName] = tostring(animId)
     end
-    local success, encodedFavorites = pcall(HttpService.JSONEncode, HttpService, favoritesToSave)
+    local success, encodedCustom = pcall(HttpService.JSONEncode, HttpService, customToSave)
     if success then
         local saveSuccess, errorMessage = pcall(function()
-            writefile("stalkie/favorite_animations.json", encodedFavorites)
+            writefile("stalkie/custom_animations.json", encodedCustom)
         end)
         if not saveSuccess then
-            warn("Error saving favorites:", errorMessage)
-        elseif not hasCreatedFavoritesFile then
-            hasCreatedFavoritesFile = true
+            warn("Error saving custom animations:", errorMessage)
+        elseif not hasCreatedCustomAnimationsFile then
+            hasCreatedCustomAnimationsFile = true
         end
     else
-        warn("Error encoding favorites:", encodedFavorites)
+        warn("Error encoding custom animations:", encodedCustom)
     end
 end
 
@@ -287,9 +365,14 @@ end
 
 local function saveCustomAnimations()
     ensureStalkieFolder()
-    local customToSave = {}
+    local customToSave = {
+        animations = {},
+        idle_animation_id = idleAnimationId or "",
+        run_animation_id = runAnimationId or "",
+        jump_animation_id = jumpAnimationId or ""
+    }
     for animName, animId in pairs(customAnimations) do
-        customToSave[animName] = tostring(animId)
+        customToSave.animations[animName] = tostring(animId)
     end
     local success, encodedCustom = pcall(HttpService.JSONEncode, HttpService, customToSave)
     if success then
@@ -306,13 +389,46 @@ local function saveCustomAnimations()
     end
 end
 
+-- Flags to track if we've already printed the animation ID messages
+local hasDisplayedIdleAnimationMessage = false
+local hasDisplayedRunAnimationMessage = false
+local hasDisplayedJumpAnimationMessage = false
+
 local function loadCustomAnimations()
     ensureStalkieFolder()
     local success, fileContent = pcall(readfile, "stalkie/custom_animations.json")
     if success then
-        local decodeSuccess, decodedCustom = pcall(HttpService.JSONDecode, HttpService, fileContent)
-        if decodeSuccess and typeof(decodedCustom) == "table" then
-            customAnimations = decodedCustom
+        local decodeSuccess, decodedData = pcall(HttpService.JSONDecode, HttpService, fileContent)
+        if decodeSuccess and typeof(decodedData) == "table" then
+            -- Handle both old and new format
+            if decodedData.animations then
+                -- New format with animations and idle_animation_id
+                customAnimations = decodedData.animations
+                if decodedData.idle_animation_id then
+                    idleAnimationId = decodedData.idle_animation_id
+                    if not hasDisplayedIdleAnimationMessage then
+                        print("Loaded idle animation ID: " .. idleAnimationId) -- Add debug message
+                        hasDisplayedIdleAnimationMessage = true
+                    end
+                end
+                if decodedData.run_animation_id then
+                    runAnimationId = decodedData.run_animation_id
+                    if not hasDisplayedRunAnimationMessage then
+                        print("Loaded run animation ID: " .. runAnimationId)
+                        hasDisplayedRunAnimationMessage = true
+                    end
+                end
+                if decodedData.jump_animation_id then
+                    jumpAnimationId = decodedData.jump_animation_id
+                    if not hasDisplayedJumpAnimationMessage then
+                        print("Loaded jump animation ID: " .. jumpAnimationId)
+                        hasDisplayedJumpAnimationMessage = true
+                    end
+                end
+            else
+                -- Old format (just animations)
+                customAnimations = decodedData
+            end
         else
             customAnimations = {}
         end
@@ -615,8 +731,891 @@ local function resetNeckOrientation(character, isClone)
     end
 end
 
+-- Simple direct approach to idle animation system
+
+-- Dedicated idle animation functions
+local function playIdleAnimation()
+    if not ghostClone or not ghostEnabled or idleAnimationId == "" then return end
+    if isPlayingIdle then return end  -- Already playing
+    
+    -- Don't interrupt other animations
+    if animationState.isRunning and animationState.currentId ~= idleAnimationId then return end
+    
+    -- Load and play the animation directly
+    local humanoid = ghostClone:FindFirstChildWhichIsA("Humanoid")
+    if not humanoid then return end
+    
+    local refPart = ghostClone:FindFirstChild("LowerTorso") or ghostClone:FindFirstChild("Torso")
+    if not refPart then return end
+    
+    -- Triple check movement status before playing (avoid edge cases)
+    local isMoving = humanoid.MoveDirection.Magnitude > 0.01
+    local isJumping = humanoid:GetState() == Enum.HumanoidStateType.Jumping
+    local isFalling = humanoid:GetState() == Enum.HumanoidStateType.Freefall
+    
+    if isMoving or isJumping or isFalling then
+        return -- Don't play idle if any movement is detected
+    end
+    
+    local success, animationAsset = pcall(function()
+        return game:GetObjects("rbxassetid://" .. idleAnimationId)[1]
+    end)
+    
+    if not success or not animationAsset then
+        return
+    end
+    
+    -- Stop any currently playing animations and sounds
+    if animationState.isRunning then
+        stopAudio()
+    end
+    
+    -- Always stop any Roblox animations that might be playing
+    for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+        animTrack:Stop()
+    end
+    
+    -- Properly disable the animate script to prevent overlap with walking animation
+    if originalAnimateScript and not originalAnimateScript.Disabled then
+        originalAnimateScript.Disabled = true
+    end
+    
+    -- Mark as playing before starting the animation
+    isPlayingIdle = true
+    animationState.currentId = idleAnimationId
+    animationState.isRunning = true
+    
+    -- Set up the animation to play
+    animationAsset.Priority = Enum.AnimationPriority.Action
+    animationState.keyframes = animationAsset:GetKeyframes()
+    animationState.totalDuration = animationState.keyframes[#animationState.keyframes].Time
+    animationState.elapsedTime = 0
+    
+    -- Start the animation playing
+    if not animationState.connection then
+        -- Only disable other scripts, never the original animate script
+        for _, script in pairs(ghostClone:GetChildren()) do
+            if script:IsA("LocalScript") and script.Enabled and script ~= originalAnimateScript and script.Name ~= "Animate" then
+                script.Enabled = false
+            end
+        end
+        
+        -- Set up the animation connection
+        animationState.connection = RunService.Heartbeat:Connect(function(deltaTime)
+            if not animationState.isRunning or not ghostClone then
+                isPlayingIdle = false
+                animationState.connection:Disconnect()
+                animationState.connection = nil
+                return
+            end
+            
+            -- Animation update logic
+            if not animationState.keyframes then return end
+            
+            animationState.elapsedTime = animationState.elapsedTime + (deltaTime * animationState.speed)
+            if animationState.elapsedTime >= animationState.totalDuration then
+                animationState.elapsedTime = animationState.elapsedTime % animationState.totalDuration
+            end
+            
+            -- Find current and next keyframes based on elapsed time
+            local currentFrame, nextFrame
+            for i = 1, #animationState.keyframes - 1 do
+                if animationState.elapsedTime >= animationState.keyframes[i].Time and animationState.elapsedTime < animationState.keyframes[i + 1].Time then
+                    currentFrame = animationState.keyframes[i]
+                    nextFrame = animationState.keyframes[i + 1]
+                    break
+                end
+            end
+            if not currentFrame then
+                currentFrame = animationState.keyframes[#animationState.keyframes]
+                nextFrame = animationState.keyframes[1]
+            end
+            
+            -- Calculate lerp factor between frames
+            local frameDuration = nextFrame.Time - currentFrame.Time
+            local frameTime = animationState.elapsedTime - currentFrame.Time
+            local alpha = frameTime / frameDuration
+            alpha = math.clamp(alpha, 0, 1)
+            
+            -- Apply animation poses to all joints
+            local character = ghostClone
+            local Joints = {
+                ["Torso"] = character:WaitForChild("HumanoidRootPart"):FindFirstChild("RootJoint"),
+                ["Head"] = character:WaitForChild("Head"):FindFirstChild("Neck"),
+                ["LeftUpperArm"] = character:WaitForChild("LeftUpperArm"):FindFirstChild("LeftShoulder"),
+                ["RightUpperArm"] = character:WaitForChild("RightUpperArm"):FindFirstChild("RightShoulder"),
+                ["LeftUpperLeg"] = character:WaitForChild("LeftUpperLeg"):FindFirstChild("LeftHip"),
+                ["RightUpperLeg"] = character:WaitForChild("RightUpperLeg"):FindFirstChild("RightHip"),
+                ["LeftFoot"] = character:WaitForChild("LeftFoot"):FindFirstChild("LeftAnkle"),
+                ["RightFoot"] = character:WaitForChild("RightFoot"):FindFirstChild("RightAnkle"),
+                ["LeftHand"] = character:WaitForChild("LeftHand"):FindFirstChild("LeftWrist"),
+                ["RightHand"] = character:WaitForChild("RightHand"):FindFirstChild("RightWrist"),
+                ["LeftLowerArm"] = character:WaitForChild("LeftLowerArm"):FindFirstChild("LeftElbow"),
+                ["RightLowerArm"] = character:WaitForChild("RightLowerArm"):FindFirstChild("RightElbow"),
+                ["LeftLowerLeg"] = character:WaitForChild("LeftLowerLeg"):FindFirstChild("LeftKnee"),
+                ["RightLowerLeg"] = character:WaitForChild("RightLowerLeg"):FindFirstChild("RightKnee"),
+                ["LowerTorso"] = character:WaitForChild("LowerTorso"):FindFirstChild("Root"),
+                ["UpperTorso"] = character:WaitForChild("UpperTorso"):FindFirstChild("Waist"),
+            }
+            
+            -- Apply poses to joints
+            for _, pose in pairs(currentFrame:GetDescendants()) do
+                local motor = Joints[pose.Name]
+                if motor and ghostOriginalMotorCFrames[motor] then
+                    local currentCFrame = ghostOriginalMotorCFrames[motor].C0 * pose.CFrame
+                    local nextPose = nextFrame:FindFirstChild(pose.Name, true)
+                    if nextPose then
+                        local nextCFrame = ghostOriginalMotorCFrames[motor].C0 * nextPose.CFrame
+                        motor.C0 = currentCFrame:Lerp(nextCFrame, alpha)
+                    else
+                        motor.C0 = currentCFrame
+                    end
+                end
+            end
+        end)
+    end
+end
+
+local function stopIdleAnimation(forceStop)
+    -- If forceStop is true or isPlayingIdle is true, proceed with stopping
+    if not (isPlayingIdle or forceStop) then return end
+    
+    isPlayingIdle = false
+    _G.isPlayingIdleAnim = false
+    
+    -- Stop the animation if it's running with idle animation ID
+    -- or if forceStop is true (which means stop any currently playing idle animation)
+    if animationState.isRunning and (animationState.currentId == idleAnimationId or forceStop) then
+        animationState.isRunning = false
+        animationState.currentId = nil
+        
+        -- Reset motor positions
+        if ghostClone then
+            for motor, orig in pairs(ghostOriginalMotorCFrames) do
+                if motor and motor:IsA("Motor6D") then
+                    motor.C0 = orig.C0
+                end
+            end
+        end
+        
+        -- Disconnect animation connection if needed
+        if animationState.connection then
+            animationState.connection:Disconnect()
+            animationState.connection = nil
+        end
+        
+        -- Make sure originalAnimateScript is enabled for walking animations
+        if ghostClone and originalAnimateScript and originalAnimateScript.Disabled then
+            -- Minimal delay for smoother transition
+            task.spawn(function()
+                originalAnimateScript.Disabled = false
+                
+                -- Force animation update to prevent stuck animations
+                local humanoid = ghostClone:FindFirstChildWhichIsA("Humanoid")
+                if humanoid then
+                    -- Re-apply velocity to trigger walk cycle if player is moving
+                    local velocity = humanoid.MoveDirection
+                    if velocity.Magnitude > 0 then
+                        humanoid:Move(velocity)
+                    end
+                end
+            end)
+        end
+    end
+end
+
+local function playRunAnimation()
+    if not ghostClone or not ghostEnabled or runAnimationId == "" then return end
+    if isPlayingRun then return end  -- Already playing
+    
+    -- Don't interrupt other animations except idle
+    if animationState.isRunning and animationState.currentId ~= idleAnimationId and animationState.currentId ~= runAnimationId then return end
+    
+    -- Stop idle animation if it's playing
+    if isPlayingIdle then
+        stopIdleAnimation()
+    end
+    
+    -- Load and play the animation directly
+    local humanoid = ghostClone:FindFirstChildWhichIsA("Humanoid")
+    if not humanoid then return end
+    
+    local refPart = ghostClone:FindFirstChild("LowerTorso") or ghostClone:FindFirstChild("Torso")
+    if not refPart then return end
+    
+    -- Final check that we're actually moving before playing run animation
+    local isMoving = humanoid.MoveDirection.Magnitude > 0.01
+    if not isMoving then return end
+    
+    local success, animationAsset = pcall(function()
+        return game:GetObjects("rbxassetid://" .. runAnimationId)[1]
+    end)
+    
+    if not success or not animationAsset then
+        return
+    end
+    
+    -- Stop any currently playing animations and sounds
+    if animationState.isRunning then
+        stopAudio()
+    end
+    
+    -- CRITICAL FIX: Make absolutely sure the original animation script is disabled FIRST
+    -- This must happen before stopping animations to prevent default anims from playing
+    if originalAnimateScript then
+        originalAnimateScript.Disabled = true
+        -- Reduced delay for smoother transitions
+        task.wait(0.01)
+    end
+    
+    -- Always stop ALL Roblox animations to prevent any conflicts
+    for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+        animTrack:Stop()
+    end
+    
+    -- Minimal wait to ensure animations are stopped
+    task.wait(0.01)
+    
+    -- Mark as playing before starting the animation
+    isPlayingRun = true
+    _G.isPlayingRunAnim = true
+    animationState.currentId = runAnimationId
+    animationState.isRunning = true
+    
+    -- Set up the animation to play
+    animationAsset.Priority = Enum.AnimationPriority.Action
+    animationState.keyframes = animationAsset:GetKeyframes()
+    animationState.totalDuration = animationState.keyframes[#animationState.keyframes].Time
+    animationState.elapsedTime = 0
+    
+    -- Start the animation playing
+    if not animationState.connection then
+        -- Disable ALL other scripts that could interfere with animations
+        for _, script in pairs(ghostClone:GetChildren()) do
+            if script:IsA("LocalScript") and script.Enabled and script.Name ~= "Animate" then
+                script.Enabled = false
+            end
+        end
+        
+        -- Set up the animation connection
+        animationState.connection = RunService.Heartbeat:Connect(function(deltaTime)
+            if not animationState.isRunning or not ghostClone then
+                isPlayingRun = false
+                _G.isPlayingRunAnim = false
+                animationState.connection:Disconnect()
+                animationState.connection = nil
+                return
+            end
+            
+            -- Animation update logic
+            if not animationState.keyframes then return end
+            
+            animationState.elapsedTime = animationState.elapsedTime + (deltaTime * animationState.speed)
+            if animationState.elapsedTime >= animationState.totalDuration then
+                animationState.elapsedTime = animationState.elapsedTime % animationState.totalDuration
+            end
+            
+            -- Find current and next keyframes based on elapsed time
+            local currentFrame, nextFrame
+            for i = 1, #animationState.keyframes - 1 do
+                if animationState.elapsedTime >= animationState.keyframes[i].Time and animationState.elapsedTime < animationState.keyframes[i + 1].Time then
+                    currentFrame = animationState.keyframes[i]
+                    nextFrame = animationState.keyframes[i + 1]
+                    break
+                end
+            end
+            if not currentFrame then
+                currentFrame = animationState.keyframes[#animationState.keyframes]
+                nextFrame = animationState.keyframes[1]
+            end
+            
+            -- Calculate lerp factor between frames
+            local frameDuration = nextFrame.Time - currentFrame.Time
+            local frameTime = animationState.elapsedTime - currentFrame.Time
+            local alpha = frameTime / frameDuration
+            alpha = math.clamp(alpha, 0, 1)
+            
+            -- Apply animation poses to all joints
+            local character = ghostClone
+            local Joints = {
+                ["Torso"] = character:WaitForChild("HumanoidRootPart"):FindFirstChild("RootJoint"),
+                ["Head"] = character:WaitForChild("Head"):FindFirstChild("Neck"),
+                ["LeftUpperArm"] = character:WaitForChild("LeftUpperArm"):FindFirstChild("LeftShoulder"),
+                ["RightUpperArm"] = character:WaitForChild("RightUpperArm"):FindFirstChild("RightShoulder"),
+                ["LeftUpperLeg"] = character:WaitForChild("LeftUpperLeg"):FindFirstChild("LeftHip"),
+                ["RightUpperLeg"] = character:WaitForChild("RightUpperLeg"):FindFirstChild("RightHip"),
+                ["LeftFoot"] = character:WaitForChild("LeftFoot"):FindFirstChild("LeftAnkle"),
+                ["RightFoot"] = character:WaitForChild("RightFoot"):FindFirstChild("RightAnkle"),
+                ["LeftHand"] = character:WaitForChild("LeftHand"):FindFirstChild("LeftWrist"),
+                ["RightHand"] = character:WaitForChild("RightHand"):FindFirstChild("RightWrist"),
+                ["LeftLowerArm"] = character:WaitForChild("LeftLowerArm"):FindFirstChild("LeftElbow"),
+                ["RightLowerArm"] = character:WaitForChild("RightLowerArm"):FindFirstChild("RightElbow"),
+                ["LeftLowerLeg"] = character:WaitForChild("LeftLowerLeg"):FindFirstChild("LeftKnee"),
+                ["RightLowerLeg"] = character:WaitForChild("RightLowerLeg"):FindFirstChild("RightKnee"),
+                ["LowerTorso"] = character:WaitForChild("LowerTorso"):FindFirstChild("Root"),
+                ["UpperTorso"] = character:WaitForChild("UpperTorso"):FindFirstChild("Waist"),
+            }
+            
+            -- Apply poses to joints
+            for _, pose in pairs(currentFrame:GetDescendants()) do
+                local motor = Joints[pose.Name]
+                if motor and ghostOriginalMotorCFrames[motor] then
+                    local currentCFrame = ghostOriginalMotorCFrames[motor].C0 * pose.CFrame
+                    local nextPose = nextFrame:FindFirstChild(pose.Name, true)
+                    if nextPose then
+                        local nextCFrame = ghostOriginalMotorCFrames[motor].C0 * nextPose.CFrame
+                        motor.C0 = currentCFrame:Lerp(nextCFrame, alpha)
+                    else
+                        motor.C0 = currentCFrame
+                    end
+                end
+            end
+        end)
+    end
+end
+
+local function stopRunAnimation()
+    if not isPlayingRun then return end
+    
+    isPlayingRun = false
+    _G.isPlayingRunAnim = false
+    
+    -- Only stop if this is actually the run animation playing
+    if animationState.isRunning and animationState.currentId == runAnimationId then
+        animationState.isRunning = false
+        animationState.currentId = nil
+        
+        -- Reset motor positions
+        if ghostClone then
+            for motor, orig in pairs(ghostOriginalMotorCFrames) do
+                if motor and motor:IsA("Motor6D") then
+                    motor.C0 = orig.C0
+                end
+            end
+        end
+        
+        -- Disconnect animation connection if needed
+        if animationState.connection then
+            animationState.connection:Disconnect()
+            animationState.connection = nil
+        end
+        
+        -- CRITICAL: We ONLY want to re-enable the animate script if we're not going 
+        -- to play any other custom animations next. Otherwise, the Roblox animations 
+        -- will play simultaneously with our custom ones and cause glitches.
+        if ghostClone and originalAnimateScript and originalAnimateScript.Disabled then
+            -- If we have no other custom animations queued up
+            if not animationState.isRunning then 
+                -- Make sure we stop all animations first before potentially re-enabling default ones
+                task.spawn(function()
+                    local humanoid = ghostClone:FindFirstChildWhichIsA("Humanoid")
+                    if humanoid then
+                        -- First stop ALL playing animations
+                        for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+                            animTrack:Stop()
+                        end
+                        
+                        -- Minimal wait for animations to stop
+                        task.wait(0.01)
+                        
+                        -- We should only re-enable the default animate script when:
+                        -- 1. No custom animations are actively playing
+                        -- 2. We don't have custom idle/run animations set
+                        local shouldEnableDefaultAnims = true
+                        
+                        -- If we have a custom run animation and we're moving, keep animate disabled
+                        if runAnimationId ~= "" and humanoid.MoveDirection.Magnitude > 0.01 then
+                            shouldEnableDefaultAnims = false
+                            -- We'll re-trigger the run animation in the movement monitoring system
+                        end
+                        
+                        -- If we have a custom idle animation and we're not moving, keep animate disabled
+                        if idleAnimationId ~= "" and humanoid.MoveDirection.Magnitude <= 0.01 then
+                            shouldEnableDefaultAnims = false
+                            -- We'll re-trigger the idle animation in the movement monitoring system
+                        end
+                        
+                        if shouldEnableDefaultAnims then
+                            -- Now re-enable the original animation script
+                            originalAnimateScript.Disabled = false
+                            
+                            -- If player is moving, trigger walk animation correctly
+                            local velocity = humanoid.MoveDirection
+                            if velocity.Magnitude > 0 then
+                                -- Minimal wait to ensure the script is active
+                                task.wait(0.01)
+                                humanoid:Move(Vector3.new(0, 0, 0)) -- Reset movement first
+                                task.wait(0.01)
+                                humanoid:Move(velocity) -- Then apply actual movement
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+    end
+end
+
+local function playJumpAnimation()
+    if not ghostClone or not ghostEnabled or jumpAnimationId == "" then return end
+    if isPlayingJump then return end  -- Already playing
+    
+    -- Don't interrupt other animations except idle and run
+    if animationState.isRunning and animationState.currentId ~= idleAnimationId and animationState.currentId ~= runAnimationId and animationState.currentId ~= jumpAnimationId then return end
+    
+    -- Stop idle or run animation if they're playing
+    if isPlayingIdle then
+        stopIdleAnimation()
+    end
+    
+    if isPlayingRun then
+        stopRunAnimation()
+    end
+    
+    -- Load and play the animation directly
+    local humanoid = ghostClone:FindFirstChildWhichIsA("Humanoid")
+    if not humanoid then return end
+    
+    local refPart = ghostClone:FindFirstChild("LowerTorso") or ghostClone:FindFirstChild("Torso")
+    if not refPart then return end
+    
+    -- Final check that we're actually jumping before playing jump animation
+    local isJumping = humanoid:GetState() == Enum.HumanoidStateType.Jumping
+    local isFalling = humanoid:GetState() == Enum.HumanoidStateType.Freefall
+    
+    if not (isJumping or isFalling) then return end
+    
+    local success, animationAsset = pcall(function()
+        return game:GetObjects("rbxassetid://" .. jumpAnimationId)[1]
+    end)
+    
+    if not success or not animationAsset then
+        return
+    end
+    
+    -- Stop any currently playing animations and sounds
+    if animationState.isRunning then
+        stopAudio()
+    end
+    
+    -- CRITICAL FIX: Make absolutely sure the original animation script is disabled FIRST
+    -- This must happen before stopping animations to prevent default anims from playing
+    if originalAnimateScript then
+        originalAnimateScript.Disabled = true
+        -- Reduced delay for smoother transitions
+        task.wait(0.01)
+    end
+    
+    -- Always stop ALL Roblox animations to prevent any conflicts
+    for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+        animTrack:Stop()
+    end
+    
+    -- Minimal wait to ensure animations are stopped
+    task.wait(0.01)
+    
+    -- Mark as playing before starting the animation
+    isPlayingJump = true
+    _G.isPlayingJumpAnim = true
+    animationState.currentId = jumpAnimationId
+    animationState.isRunning = true
+    
+    -- Set up the animation to play
+    animationAsset.Priority = Enum.AnimationPriority.Action
+    animationState.keyframes = animationAsset:GetKeyframes()
+    animationState.totalDuration = animationState.keyframes[#animationState.keyframes].Time
+    animationState.elapsedTime = 0
+    
+    -- Start the animation playing
+    if not animationState.connection then
+        -- Disable ALL other scripts that could interfere with animations
+        for _, script in pairs(ghostClone:GetChildren()) do
+            if script:IsA("LocalScript") and script.Enabled and script.Name ~= "Animate" then
+                script.Enabled = false
+            end
+        end
+        
+        -- Set up the animation connection
+        animationState.connection = RunService.Heartbeat:Connect(function(deltaTime)
+            if not animationState.isRunning or not ghostClone then
+                isPlayingJump = false
+                _G.isPlayingJumpAnim = false
+                animationState.connection:Disconnect()
+                animationState.connection = nil
+                return
+            end
+            
+            -- Animation update logic
+            if not animationState.keyframes then return end
+            
+            animationState.elapsedTime = animationState.elapsedTime + (deltaTime * animationState.speed)
+            if animationState.elapsedTime >= animationState.totalDuration then
+                animationState.elapsedTime = animationState.elapsedTime % animationState.totalDuration
+            end
+            
+            -- Find current and next keyframes based on elapsed time
+            local currentFrame, nextFrame
+            for i = 1, #animationState.keyframes - 1 do
+                if animationState.elapsedTime >= animationState.keyframes[i].Time and animationState.elapsedTime < animationState.keyframes[i + 1].Time then
+                    currentFrame = animationState.keyframes[i]
+                    nextFrame = animationState.keyframes[i + 1]
+                    break
+                end
+            end
+            if not currentFrame then
+                currentFrame = animationState.keyframes[#animationState.keyframes]
+                nextFrame = animationState.keyframes[1]
+            end
+            
+            -- Calculate lerp factor between frames
+            local frameDuration = nextFrame.Time - currentFrame.Time
+            local frameTime = animationState.elapsedTime - currentFrame.Time
+            local alpha = frameTime / frameDuration
+            alpha = math.clamp(alpha, 0, 1)
+            
+            -- Apply animation poses to all joints
+            local character = ghostClone
+            local Joints = {
+                ["Torso"] = character:WaitForChild("HumanoidRootPart"):FindFirstChild("RootJoint"),
+                ["Head"] = character:WaitForChild("Head"):FindFirstChild("Neck"),
+                ["LeftUpperArm"] = character:WaitForChild("LeftUpperArm"):FindFirstChild("LeftShoulder"),
+                ["RightUpperArm"] = character:WaitForChild("RightUpperArm"):FindFirstChild("RightShoulder"),
+                ["LeftUpperLeg"] = character:WaitForChild("LeftUpperLeg"):FindFirstChild("LeftHip"),
+                ["RightUpperLeg"] = character:WaitForChild("RightUpperLeg"):FindFirstChild("RightHip"),
+                ["LeftFoot"] = character:WaitForChild("LeftFoot"):FindFirstChild("LeftAnkle"),
+                ["RightFoot"] = character:WaitForChild("RightFoot"):FindFirstChild("RightAnkle"),
+                ["LeftHand"] = character:WaitForChild("LeftHand"):FindFirstChild("LeftWrist"),
+                ["RightHand"] = character:WaitForChild("RightHand"):FindFirstChild("RightWrist"),
+                ["LeftLowerArm"] = character:WaitForChild("LeftLowerArm"):FindFirstChild("LeftElbow"),
+                ["RightLowerArm"] = character:WaitForChild("RightLowerArm"):FindFirstChild("RightElbow"),
+                ["LeftLowerLeg"] = character:WaitForChild("LeftLowerLeg"):FindFirstChild("LeftKnee"),
+                ["RightLowerLeg"] = character:WaitForChild("RightLowerLeg"):FindFirstChild("RightKnee"),
+                ["LowerTorso"] = character:WaitForChild("LowerTorso"):FindFirstChild("Root"),
+                ["UpperTorso"] = character:WaitForChild("UpperTorso"):FindFirstChild("Waist"),
+            }
+            
+            -- Apply poses to joints
+            for _, pose in pairs(currentFrame:GetDescendants()) do
+                local motor = Joints[pose.Name]
+                if motor and ghostOriginalMotorCFrames[motor] then
+                    local currentCFrame = ghostOriginalMotorCFrames[motor].C0 * pose.CFrame
+                    local nextPose = nextFrame:FindFirstChild(pose.Name, true)
+                    if nextPose then
+                        local nextCFrame = ghostOriginalMotorCFrames[motor].C0 * nextPose.CFrame
+                        motor.C0 = currentCFrame:Lerp(nextCFrame, alpha)
+                    else
+                        motor.C0 = currentCFrame
+                    end
+                end
+            end
+        end)
+    end
+end
+
+local function stopJumpAnimation()
+    if not isPlayingJump then return end
+    
+    isPlayingJump = false
+    _G.isPlayingJumpAnim = false
+    
+    -- Only stop if this is actually the jump animation playing
+    if animationState.isRunning and animationState.currentId == jumpAnimationId then
+        animationState.isRunning = false
+        animationState.currentId = nil
+        
+        -- Reset motor positions
+        if ghostClone then
+            for motor, orig in pairs(ghostOriginalMotorCFrames) do
+                if motor and motor:IsA("Motor6D") then
+                    motor.C0 = orig.C0
+                end
+            end
+        end
+        
+        -- Disconnect animation connection if needed
+        if animationState.connection then
+            animationState.connection:Disconnect()
+            animationState.connection = nil
+        end
+        
+        -- CRITICAL: We ONLY want to re-enable the animate script if we're not going 
+        -- to play any other custom animations next. Otherwise, the Roblox animations 
+        -- will play simultaneously with our custom ones and cause glitches.
+        if ghostClone and originalAnimateScript and originalAnimateScript.Disabled then
+            -- If we have no other custom animations queued up
+            if not animationState.isRunning then 
+                -- Make sure we stop all animations first before potentially re-enabling default ones
+                task.spawn(function()
+                    local humanoid = ghostClone:FindFirstChildWhichIsA("Humanoid")
+                    if humanoid then
+                        -- First stop ALL playing animations
+                        for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+                            animTrack:Stop()
+                        end
+                        
+                        -- Minimal wait for animations to stop
+                        task.wait(0.01)
+                        
+                        -- We should only re-enable the default animate script when:
+                        -- 1. No custom animations are actively playing
+                        -- 2. We don't have custom idle/run/jump animations set
+                        local shouldEnableDefaultAnims = true
+                        
+                        -- Check all custom animation cases
+                        local isMoving = humanoid.MoveDirection.Magnitude > 0.01
+                        local isJumping = humanoid:GetState() == Enum.HumanoidStateType.Jumping
+                        local isFalling = humanoid:GetState() == Enum.HumanoidStateType.Freefall
+                        
+                        -- If we have a custom run animation and we're moving, keep animate disabled
+                        if runAnimationId ~= "" and isMoving then
+                            shouldEnableDefaultAnims = false
+                        end
+                        
+                        -- If we have a custom idle animation and we're not moving, keep animate disabled
+                        if idleAnimationId ~= "" and not isMoving and not isJumping and not isFalling then
+                            shouldEnableDefaultAnims = false
+                        end
+                        
+                        -- If we have a custom jump animation and we're jumping/falling, keep animate disabled
+                        if jumpAnimationId ~= "" and (isJumping or isFalling) then
+                            shouldEnableDefaultAnims = false
+                        end
+                        
+                        if shouldEnableDefaultAnims then
+                            -- Now re-enable the original animation script
+                            originalAnimateScript.Disabled = false
+                            
+                            -- If player is moving, trigger walk animation correctly
+                            local velocity = humanoid.MoveDirection
+                            if velocity.Magnitude > 0 then
+                                -- Minimal wait to ensure the script is active
+                                task.wait(0.01)
+                                humanoid:Move(Vector3.new(0, 0, 0)) -- Reset movement first
+                                task.wait(0.01)
+                                humanoid:Move(velocity) -- Then apply actual movement
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+    end
+end
+
+-- Function to start idle animation monitoring
+-- Track the user's movement state to prevent idle animation bugs
+local lastMovementState = false
+
+-- Function to safely stop idle monitoring
+local function stopIdleMonitoring()
+    if idleCheckConnection then 
+        idleCheckConnection:Disconnect()
+        idleCheckConnection = nil
+    end
+    lastMovementState = false
+    isInJumpOrFallState = false
+ end
+
+local function startIdleMonitoring()
+    if idleCheckConnection then idleCheckConnection:Disconnect() end
+    
+    -- Reset movement state tracking when starting monitoring
+    lastMovementState = false
+    isInJumpOrFallState = false
+    
+    idleCheckConnection = RunService.Heartbeat:Connect(function()
+        if not ghostClone or not ghostEnabled then return end
+        
+        local humanoid = ghostClone:FindFirstChildWhichIsA("Humanoid")
+        if not humanoid then return end
+        
+        -- Check if any regular (non-idle, non-run, non-jump) animation is playing
+        local regularAnimationPlaying = animationState.isRunning and animationState.currentId and 
+                                       animationState.currentId ~= idleAnimationId and 
+                                       animationState.currentId ~= runAnimationId and
+                                       animationState.currentId ~= jumpAnimationId
+        
+        -- More robust check for movement - Include jump state and falling
+        local isMoving = humanoid.MoveDirection.Magnitude > 0.01 -- Small threshold to catch very minor movements
+        local isJumping = humanoid:GetState() == Enum.HumanoidStateType.Jumping
+        local isFalling = humanoid:GetState() == Enum.HumanoidStateType.Freefall
+        local hasPhysicalMovement = isMoving or isJumping or isFalling
+        
+        -- Check if we just entered or exited a jump/fall state
+        local wasInJumpOrFallState = isInJumpOrFallState
+        isInJumpOrFallState = isJumping or isFalling
+        local jumpStateChanged = wasInJumpOrFallState ~= isInJumpOrFallState
+        
+        -- If we just landed from a jump/fall, stop the jump animation
+        if jumpStateChanged and wasInJumpOrFallState and not isInJumpOrFallState and isPlayingJump then
+            stopJumpAnimation()
+        end
+        
+        -- If we just started jumping and we have a jump animation ID, play it
+        if jumpStateChanged and not wasInJumpOrFallState and isInJumpOrFallState and not isPlayingJump and jumpAnimationId ~= "" then
+            playJumpAnimation()
+        end
+        
+        -- Detect changes in movement state to better handle transitions
+        local movementStateChanged = (hasPhysicalMovement ~= lastMovementState)
+        lastMovementState = hasPhysicalMovement
+        
+        if hasPhysicalMovement then
+            -- If currently playing idle animation, stop it immediately
+            if isPlayingIdle then
+                stopIdleAnimation()
+            end
+            
+            -- Handle run animation when moving, jumping, or falling
+            if not regularAnimationPlaying then
+                if runAnimationId ~= "" then
+                    -- CRITICAL: Always make sure default animations are disabled when we have a custom run animation
+                    if originalAnimateScript and not originalAnimateScript.Disabled then
+                        originalAnimateScript.Disabled = true
+                    end
+                    
+                    -- Important: If in jump/fall state, prioritize jump animation over run animation
+                    if isInJumpOrFallState then
+                        if originalAnimateScript and not originalAnimateScript.Disabled then
+                            originalAnimateScript.Disabled = true
+                        end
+                        
+                        -- Stop run animation if it's playing while jumping
+                        if isPlayingRun then
+                            stopRunAnimation()
+                        end
+                        
+                        -- If we have a custom jump animation, play it during jumping/falling
+                        if jumpAnimationId ~= "" and not isPlayingJump then
+                            playJumpAnimation()
+                        end
+                    -- Only play run animation if not jumping/falling
+                    elseif jumpStateChanged and not isInJumpOrFallState and isMoving then
+                        -- We just landed from a jump while moving, always restart run animation
+                        if isPlayingRun then
+                            -- First stop any possibly active animation
+                            stopRunAnimation()
+                            -- Immediate transition to run animation
+                            task.delay(0.01, function()
+                                -- Then restart the run animation
+                                playRunAnimation()
+                            end)
+                        else
+                            -- Just start the run animation if it wasn't playing
+                            playRunAnimation()
+                        end
+                    elseif not isPlayingRun then
+                        -- Regular case: play run animation if not already playing and not jumping
+                        playRunAnimation()
+                    end
+                else
+                    -- No custom run animation - use default Roblox animations
+                    -- Make sure original animate script is enabled for walking animations
+                    if originalAnimateScript and originalAnimateScript.Disabled then
+                        originalAnimateScript.Disabled = false
+                    end
+                end
+            else
+                -- If a custom animation is playing, we should disable the animate script
+                -- to prevent walking animations from playing underneath
+                if originalAnimateScript and not originalAnimateScript.Disabled then
+                    originalAnimateScript.Disabled = true
+                end
+            end
+        else
+            -- We stopped moving
+            
+            -- Stop run animation if it's playing
+            if isPlayingRun then
+                stopRunAnimation()
+            end
+            
+            if not regularAnimationPlaying then
+                if idleAnimationId == "" then
+                    -- No custom idle animation - use default Roblox animations
+                    -- Make sure original animate script is enabled for default idle
+                    if originalAnimateScript and originalAnimateScript.Disabled then
+                        originalAnimateScript.Disabled = false
+                    end
+                else
+                    -- Custom idle animation - disable default animations
+                    -- Make sure animate script is disabled when custom idle should play
+                    if originalAnimateScript and not originalAnimateScript.Disabled then
+                        originalAnimateScript.Disabled = true
+                    end
+                    
+                    -- Play idle animation if we're not already playing it
+                    if not isPlayingIdle then
+                        -- Reduced delay for smoother idle transition
+                        task.delay(0.03, function()
+                            if not ghostClone or not ghostEnabled then return end
+                            local hum = ghostClone:FindFirstChildWhichIsA("Humanoid")
+                            if not hum then return end
+                            
+                            -- Double-check we're still not moving
+                            if hum.MoveDirection.Magnitude <= 0.01 and 
+                               not (hum:GetState() == Enum.HumanoidStateType.Jumping or 
+                                    hum:GetState() == Enum.HumanoidStateType.Freefall) and
+                               not regularAnimationPlaying then
+                                playIdleAnimation()
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Function to stop idle animation monitoring
+local function stopIdleMonitoring()
+    if idleCheckConnection then
+        idleCheckConnection:Disconnect()
+        idleCheckConnection = nil
+    end
+    
+    -- Reset movement tracking state
+    lastMovementState = false
+    
+    -- Stop idle animation if it's playing
+    if isPlayingIdle then
+        stopIdleAnimation()
+    end
+    
+    -- Stop run animation if it's playing
+    if isPlayingRun then
+        stopRunAnimation()
+    end
+end
+
 local function setGhostEnabled(newState)
     ghostEnabled = newState
+
+    -- Start or stop idle monitoring based on ghost state
+    if newState then
+        -- Setup a delayed check to ensure the character is fully loaded
+        task.delay(0.5, function()
+            if ghostEnabled and ghostClone and idleAnimationId ~= "" then
+                -- Start the idle animation immediately if we're not moving
+                local humanoid = ghostClone:FindFirstChildWhichIsA("Humanoid")
+                if humanoid and humanoid.MoveDirection.Magnitude <= 0 then
+                    playIdleAnimation() -- Use our direct play function
+                end
+            end
+        end)
+        
+        -- Start monitoring to handle ongoing movement changes
+        startIdleMonitoring()
+    else
+        -- Stop idle monitoring and any playing animations
+        stopIdleMonitoring()
+        if isPlayingIdle then
+            stopIdleAnimation()
+        end
+        if isPlayingRun then
+            stopRunAnimation()
+        end
+    end
 
     local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
     local Packets = nil
@@ -827,39 +1826,316 @@ end
 local animationButtons = {}
 local customButtons = {}
 
-local function stopFakeAnimation()
-    animationState.isRunning = false
-    stopAudio()
+-- This function completely disables the default Roblox animations
+local function disableDefaultAnimations()
+    if not originalAnimateScript then return end
+    
+    -- AGGRESSIVE: First stop the animation script itself AND store its disabled state
+    originalAnimateScript.Disabled = true
+    
+    -- Also check for and disable any other potential animation scripts in the ghost clone
     if ghostClone then
-        -- Reset all motor positions
+        -- Check for the "Animate" script directly
+        local animateScript = ghostClone:FindFirstChild("Animate")
+        if animateScript and animateScript:IsA("LocalScript") then
+            animateScript.Disabled = true
+        end
+        
+        -- Also check for and disable any other scripts that might be controlling animations
+        for _, child in ipairs(ghostClone:GetChildren()) do
+            if child:IsA("LocalScript") and child.Name:lower():find("anim") then
+                child.Disabled = true
+            end
+        end
+    end
+    
+    -- For ultra safety, find and stop ALL animation tracks except our custom ones
+    if ghostClone and ghostClone.Parent then
+        local humanoid = ghostClone:FindFirstChildWhichIsA("Humanoid")
+        if humanoid then
+            -- First, let's define a list of common Roblox default animation IDs to specifically block
+            local defaultAnimIds = {
+                -- Common default walk animations
+                "507777826", "507777826", -- Walk
+                "2510198475", "2510198475", -- Run
+                "891636393", "891636393", -- Default jump
+                "507765000", "507765000", -- Idle
+                -- Variations & extras
+                "754637456", "619528412", "973767371", "619521510", -- More animations
+                "754656200"
+            }
+            
+            -- List of our custom animation IDs for comparison
+            local ourCustomIds = {
+                idleAnimationId,
+                runAnimationId,
+                jumpAnimationId
+            }
+            
+            -- Only add the rbxassetid versions if the IDs exist
+            if idleAnimationId and idleAnimationId ~= "" then
+                table.insert(ourCustomIds, "rbxassetid://" .. idleAnimationId)
+            end
+            if runAnimationId and runAnimationId ~= "" then
+                table.insert(ourCustomIds, "rbxassetid://" .. runAnimationId)
+            end
+            if jumpAnimationId and jumpAnimationId ~= "" then
+                table.insert(ourCustomIds, "rbxassetid://" .. jumpAnimationId)
+            end
+            
+            for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                local animId = track.Animation and track.Animation.AnimationId or ""
+                local rawAnimId = animId:match("rbxassetid://(%d+)") or animId
+                
+                -- Check if this is one of our custom animations
+                local isOurCustomAnim = false
+                for _, customId in ipairs(ourCustomIds) do
+                    if customId ~= "" and (animId == customId or rawAnimId == customId) then
+                        isOurCustomAnim = true
+                        break
+                    end
+                end
+                
+                -- If it's not one of our animations OR it's a known default animation, stop it
+                if not isOurCustomAnim then
+                    -- Extra vigilance against default walk animations
+                    for _, defaultId in ipairs(defaultAnimIds) do
+                        if rawAnimId == defaultId or animId:find(defaultId) then
+                            print("Stopping default animation: " .. animId)
+                            track:Stop(0) -- Stop immediately with no fade
+                            track:AdjustSpeed(0) -- Set speed to 0 for extra measure
+                            break
+                        end
+                    end
+                    
+                    -- Also stop any animation that isn't explicitly ours
+                    track:Stop()
+                end
+            end
+            
+            -- As an extra measure, try to clear humanoid state that might trigger walking
+            if humanoid.MoveDirection.Magnitude <= 0.01 then
+                humanoid:Move(Vector3.new(0, 0, 0)) -- Reset movement state
+            end
+        end
+    end
+end
+
+-- Helper function that forces a specific animation to play based on character state
+local function forcePlayAppropriateAnimation(humanoid)
+    if not humanoid or not ghostClone or not ghostEnabled then return end
+    
+    -- First disable default animations
+    disableDefaultAnimations()
+    
+    -- Get current state
+    local isJumping = humanoid:GetState() == Enum.HumanoidStateType.Jumping
+    local isFalling = humanoid:GetState() == Enum.HumanoidStateType.Freefall
+    local isMoving = humanoid.MoveDirection.Magnitude > 0.01
+    
+    -- Play appropriate animation based on priority
+    if (isJumping or isFalling) and jumpAnimationId ~= "" then
+        playJumpAnimation()
+        return true
+    elseif isMoving and runAnimationId ~= "" then
+        playRunAnimation()
+        return true
+    elseif not isMoving and idleAnimationId ~= "" then
+        playIdleAnimation()
+        return true
+    end
+    
+    return false
+end
+
+-- This function completely resets all animation state and forces a clean state
+local function forceStopAllAnimations()
+    -- First save reference to humanoid for later
+    local humanoid = nil
+    if ghostClone and ghostClone.Parent then
+        humanoid = ghostClone:FindFirstChildWhichIsA("Humanoid")
+    end
+    
+    -- 1. Clear animation state flags
+    isPlayingIdle = false
+    isPlayingRun = false
+    isPlayingJump = false
+    _G.isPlayingIdleAnim = false
+    _G.isPlayingRunAnim = false
+    _G.isPlayingJumpAnim = false
+    _G.lastIdleAnimId = nil
+    
+    -- 2. Reset animation state object
+    animationState.isRunning = false
+    animationState.currentId = nil
+    animationState.keyframes = nil
+    animationState.elapsedTime = 0
+    animationState.totalDuration = 0
+    
+    -- 3. Disconnect animation connection
+    if animationState.connection then
+        animationState.connection:Disconnect()
+        animationState.connection = nil
+    end
+    
+    -- 4. Stop audio
+    stopAudio()
+    
+    -- 5. Stop ALL animation tracks
+    if humanoid then
+        for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+            track:Stop()
+        end
+        
+        -- 6. Reset motor positions
         for motor, orig in pairs(ghostOriginalMotorCFrames) do
-            if motor and motor:IsA("Motor6D") then
+            if motor and motor:IsA("Motor6D") and motor.Parent then
                 motor.C0 = orig.C0
             end
         end
-
-        -- Explicitly reset neck orientation
+        
+        -- 7. Reset neck orientation
         local neck = ghostClone:FindFirstChild("Head") and ghostClone:FindFirstChild("Head"):FindFirstChild("Neck")
             or ghostClone:FindFirstChild("Torso") and ghostClone:FindFirstChild("Torso"):FindFirstChild("Neck")
         if neck and originalNeckC0 then
             neck.C0 = originalNeckC0
         end
+    end
+    
+    -- 8. Reset UI buttons
+    for animName, buttonData in pairs(animationButtons) do
+        buttonData.NameButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    end
+    for animName, buttonData in pairs(customButtons) do
+        buttonData.NameButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    end
+    
+    -- 9. Stop idle monitoring
+    stopIdleMonitoring()
+    
+    -- 10. Ensure default animations are disabled
+    disableDefaultAnimations()
+    
+    return humanoid -- Return humanoid for convenience
+end
 
-        -- Re-enable scripts
-        for _, script in pairs(ghostClone:GetChildren()) do
-            if script:IsA("LocalScript") and not script.Enabled and script ~= originalAnimateScript then
-                script.Enabled = true
-            end
+local function stopFakeAnimation()
+    -- Store what type of animation we were playing before stopping it
+    local currentAnimId = animationState.currentId
+    local wasPlayingAnim = animationState.isRunning
+    local wasPlayingKeybindAnim = (animationState.isRunning and 
+                                 animationState.currentId ~= nil and 
+                                 animationState.currentId ~= idleAnimationId and
+                                 animationState.currentId ~= runAnimationId and
+                                 animationState.currentId ~= jumpAnimationId)
+    
+    -- Completely reset all animation state using our helper function
+    local humanoid = forceStopAllAnimations()
+    
+    -- If no humanoid was found or ghost clone doesn't exist, we're done
+    if not humanoid or not ghostClone or not ghostClone.Parent then
+        return
+    end
+    
+    -- Re-enable non-animation scripts that were disabled
+    for _, script in pairs(ghostClone:GetChildren()) do
+        if script:IsA("LocalScript") and not script.Enabled and script ~= originalAnimateScript then
+            script.Enabled = true
         end
+    end
+    
+    -- CRITICAL: Make sure default animations are always disabled with custom ones
+    if idleAnimationId ~= "" or runAnimationId ~= "" or jumpAnimationId ~= "" then
+        disableDefaultAnimations()
+        
+        -- When stopping a keybind animation, we want to ensure the right animation plays
+        if wasPlayingKeybindAnim then
+            -- Add an immediate connection to monitor movement changes after a keybind animation stops
+            task.spawn(function()
+                -- Wait to ensure all previous animations are fully stopped
+                task.wait(0.1)
+                
+                -- SUPER AGGRESSIVE: Force disable ALL default animations again
+                disableDefaultAnimations()
+                
+                -- We need to ensure the proper animation plays immediately
+                if ghostClone and ghostEnabled and humanoid then
+                    -- Get the initial state
+                    local isJumping = humanoid:GetState() == Enum.HumanoidStateType.Jumping
+                    local isFalling = humanoid:GetState() == Enum.HumanoidStateType.Freefall
+                    local isMoving = humanoid.MoveDirection.Magnitude > 0.01
+                    
+                    -- Force the appropriate animation based on priority
+                    if (isJumping or isFalling) and jumpAnimationId ~= "" then
+                        playJumpAnimation()
+                    elseif isMoving and runAnimationId ~= "" then
+                        playRunAnimation()
+                    elseif not isMoving and idleAnimationId ~= "" then
+                        playIdleAnimation()
+                    end
+                    
+                    -- Create a temporary connection to watch for movement changes to immediately catch run state
+                    local tempConnection
+                    tempConnection = RunService.Heartbeat:Connect(function()
+                        if not ghostClone or not ghostEnabled then
+                            if tempConnection then tempConnection:Disconnect() end
+                            return
+                        end
+                        
+                        local currentMoving = humanoid.MoveDirection.Magnitude > 0.01
+                        local currentJumping = humanoid:GetState() == Enum.HumanoidStateType.Jumping
+                        local currentFalling = humanoid:GetState() == Enum.HumanoidStateType.Freefall
+                        
+                        -- Check for state changes to immediately catch movement
+                        if (currentMoving ~= isMoving) or (currentJumping ~= isJumping) or (currentFalling ~= isFalling) then
+                            -- State has changed - force disable default animations again
+                            disableDefaultAnimations()
+                            
+                            -- Update tracked state
+                            isMoving = currentMoving
+                            isJumping = currentJumping
+                            isFalling = currentFalling
+                            
+                            -- Force the appropriate animation based on the new state
+                            if (isJumping or isFalling) and jumpAnimationId ~= "" then
+                                if not isPlayingJump then playJumpAnimation() end
+                            elseif isMoving and runAnimationId ~= "" then
+                                if not isPlayingRun then playRunAnimation() end
+                            elseif not isMoving and idleAnimationId ~= "" then
+                                if not isPlayingIdle then playIdleAnimation() end
+                            end
+                        end
+                    end)
+                    
+                    -- Stop this temporary connection after 1 second (by then the regular monitoring should take over)
+                    task.delay(1, function()
+                        if tempConnection then tempConnection:Disconnect() end
+                        
+                        -- Ensure the default animations are still disabled
+                        disableDefaultAnimations()
+                        
+                        -- Start the regular monitoring system if it's not already running
+                        if not idleCheckConnection then
+                            startIdleMonitoring()
+                        end
+                    end)
+                end
+            end)
+        else
+            -- Not a keybind animation, simply restart monitoring
+            task.spawn(function()
+                task.wait(0.05)
+                startIdleMonitoring()
+            end)
+        end
+    else
+        -- No custom animations, enable default Roblox animations
         if originalAnimateScript then
             originalAnimateScript.Disabled = false
         end
     end
-    if animationState.connection then
-        animationState.connection:Disconnect()
-        animationState.connection = nil
-    end
-
+    
+    -- Reset UI buttons
     for animName, buttonData in pairs(animationButtons) do
         buttonData.NameButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     end
@@ -868,7 +2144,10 @@ local function stopFakeAnimation()
     end
 end
 
-local function playFakeAnimation(animationId)
+local function playFakeAnimation(animationId, forcePlay)
+    -- Store the reference to this function globally so it can be used by the monitoring system
+    playFakeAnimation = playFakeAnimation
+    
     if not ghostClone then
         warn("Reanimate first!")
         return
@@ -886,10 +2165,42 @@ local function playFakeAnimation(animationId)
         warn("No LowerTorso or Torso found in Clone!")
         return
     end
+    
+    -- Debug output to help track animation playing
+    if animationId == idleAnimationId then
+        print("Attempting to play idle animation ID: " .. idleAnimationId)
+    end
+    
+    -- If this is the idle animation and we're forcing it to play (from movement detection)
+    -- we need to track that we're playing the idle animation
+    if animationId == idleAnimationId and forcePlay then
+        isPlayingIdle = true
+        _G.isPlayingIdleAnim = true
+        _G.lastIdleAnimId = idleAnimationId
+    end
 
+    -- IMPORTANT: If we're playing a regular animation (not idle) while idle is active,
+    -- we need to explicitly stop the idle animation first
+    if isPlayingIdle and animationId ~= idleAnimationId then
+        stopIdleAnimation()
+    end
+    
+    -- Always stop any Roblox animations that might be playing to prevent overlap
+    if humanoid then
+        for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
+        end
+    end
+
+    -- Don't stop the idle animation if we're in idle mode and trying to play the idle animation again
     if animationState.isRunning then
+        if animationState.currentId == idleAnimationId and animationId == idleAnimationId and isPlayingIdle then
+            -- Already playing idle animation, don't restart it
+            return
+        end
+        
         stopAudio()
-        if animationState.currentId == animationId then
+        if animationState.currentId == animationId and not forcePlay then
             stopFakeAnimation()
             animationState.currentId = nil
             return
@@ -929,12 +2240,12 @@ local function playFakeAnimation(animationId)
 
     local isMoving = humanoid.MoveDirection.Magnitude > 0 or humanoid:GetState() == Enum.HumanoidStateType.Running
 
-    if originalAnimateScript then
-        if isMoving then
-            originalAnimateScript.Disabled = true
-            for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
-                animTrack:Stop()
-            end
+    -- Specifically for regular animations (not idle), always disable the animate script
+    -- This prevents walking animations from playing during custom animations
+    if originalAnimateScript and animationId ~= idleAnimationId then
+        originalAnimateScript.Disabled = true
+        for _, animTrack in pairs(humanoid:GetPlayingAnimationTracks()) do
+            animTrack:Stop()
         end
     end
 
@@ -2112,6 +3423,26 @@ local function createCustomAnimationsGui()
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Parent = titleBar
 
+    -- Add Edit button to the left of the minimize button
+    local editButton = Instance.new("ImageButton")
+    editButton.Size = UDim2.new(0, 30, 0, 30) -- Slightly bigger size
+    editButton.Position = UDim2.new(1, -85, 0, 10) -- Adjusted position for centering
+    
+    -- Attempt to get the edit icon from local storage or fetch it
+    local iconImage = getEditIconAsContent()
+    if iconImage and iconImage ~= "" then
+        -- Use the locally saved icon
+        editButton.Image = iconImage
+    else
+        -- Fallback to a basic button if icon can't be loaded
+        warn("Could not load edit icon, using fallback")
+        editButton.Text = "Edit"
+    end
+    
+    editButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- White by default
+    editButton.BackgroundTransparency = 1
+    editButton.Parent = titleBar
+    
     local minimizeButton = Instance.new("TextButton")
     minimizeButton.Size = UDim2.new(0, 40, 0, 40)
     minimizeButton.Position = UDim2.new(1, -45, 0, 5)
@@ -2207,7 +3538,7 @@ local function createCustomAnimationsGui()
     -- Add button (right, dark theme, blue accent on hover)
     local addButton = Instance.new("TextButton")
     addButton.Size = UDim2.new(0.18, 0, 0, 30)
-    addButton.Position = UDim2.new(0.81, 0, 0.5, -15)
+    addButton.Position = UDim2.new(0.80, 0, 0.5, -15)
     addButton.Text = "Add"
     addButton.TextColor3 = Color3.fromRGB(220, 220, 255)
     addButton.TextSize = 15
@@ -2253,6 +3584,299 @@ local function createCustomAnimationsGui()
     scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     scrollFrame.Parent = contentFrame
+    
+    -- Create edit mode page (initially hidden)
+    local editPage = Instance.new("Frame")
+    editPage.Size = UDim2.new(1, 0, 1, 0)
+    editPage.Position = UDim2.new(0, 0, 0, 0)
+    editPage.BackgroundTransparency = 1
+    editPage.Visible = false
+    editPage.Parent = contentFrame
+    
+    -- Title for edit page
+    local editTitleLabel = Instance.new("TextLabel")
+    editTitleLabel.Size = UDim2.new(0.9, 0, 0, 30)
+    editTitleLabel.Position = UDim2.new(0.05, 0, 0, 10)
+    editTitleLabel.Text = "Character Animations"
+    editTitleLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    editTitleLabel.TextSize = 18
+    editTitleLabel.Font = Enum.Font.GothamBold
+    editTitleLabel.BackgroundTransparency = 1
+    editTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    editTitleLabel.Parent = editPage
+    
+    -- No back button - Edit button will toggle between views
+    
+    -- Idle animation ID section
+    local idleLabel = Instance.new("TextLabel")
+    idleLabel.Size = UDim2.new(0.9, 0, 0, 30)
+    idleLabel.Position = UDim2.new(0.05, 0, 0, 60)
+    idleLabel.Text = "Idle Animation ID"
+    idleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    idleLabel.TextSize = 16
+    idleLabel.Font = Enum.Font.GothamMedium
+    idleLabel.BackgroundTransparency = 1
+    idleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    idleLabel.Parent = editPage
+    
+    local idleIdBox = Instance.new("TextBox")
+    idleIdBox.Size = UDim2.new(0.9, 0, 0, 40)
+    idleIdBox.Position = UDim2.new(0.05, 0, 0, 95)
+    idleIdBox.PlaceholderText = "Enter Idle Animation ID"
+    -- Set the current idle animation ID if it exists
+    idleIdBox.Text = idleAnimationId or ""
+    idleIdBox.TextColor3 = Color3.fromRGB(220, 220, 220)
+    idleIdBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+    idleIdBox.TextSize = 14
+    idleIdBox.Font = Enum.Font.Gotham
+    idleIdBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    idleIdBox.BorderSizePixel = 0
+    local idleCorner = Instance.new("UICorner")
+    idleCorner.CornerRadius = UDim.new(0, 6)
+    idleCorner.Parent = idleIdBox
+    idleIdBox.Parent = editPage
+    
+    -- Add Focused event to clear the text box when clicked
+    idleIdBox.Focused:Connect(function()
+        -- Clear the text and animation ID
+        idleIdBox.Text = ""
+        idleAnimationId = nil
+        -- Save to file
+        saveCustomAnimations()
+        
+        -- Always stop the idle animation when removing the idle animation ID
+        -- Pass true to force stop the animation regardless of current state flags
+        stopIdleAnimation(true)
+    end)
+    
+    -- Add FocusLost event to save the idle animation ID
+    idleIdBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            if idleIdBox.Text ~= "" then
+                -- Update the idle animation ID
+                idleAnimationId = idleIdBox.Text
+                -- Save to file
+                saveCustomAnimations()
+                -- Show confirmation
+                showNotification("Idle animation ID saved!", 2)
+                
+                -- If we're currently reanimated, restart the idle animation
+                if ghostClone and ghostEnabled and not isPlayingRun and not isPlayingJump then
+                    -- Play the new idle animation
+                    playIdleAnimation()
+                end
+            else
+                -- Text is empty, remove the idle animation ID
+                idleAnimationId = nil
+                -- Save to file
+                saveCustomAnimations()
+                -- Show confirmation
+                showNotification("Idle animation removed!", 2)
+                
+                -- Stop the idle animation if it's playing
+                if ghostClone and ghostEnabled and not isPlayingRun and not isPlayingJump then
+                    -- Stop the idle animation
+                    stopIdleAnimation()
+                end
+            end
+        end
+    end)
+    
+    -- Run animation ID section
+    local runLabel = Instance.new("TextLabel")
+    runLabel.Size = UDim2.new(0.9, 0, 0, 30)
+    runLabel.Position = UDim2.new(0.05, 0, 0, 155)
+    runLabel.Text = "Run Animation ID"
+    runLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    runLabel.TextSize = 16
+    runLabel.Font = Enum.Font.GothamMedium
+    runLabel.BackgroundTransparency = 1
+    runLabel.TextXAlignment = Enum.TextXAlignment.Left
+    runLabel.Parent = editPage
+    
+    local runIdBox = Instance.new("TextBox")
+    runIdBox.Size = UDim2.new(0.9, 0, 0, 40)
+    runIdBox.Position = UDim2.new(0.05, 0, 0, 190)
+    runIdBox.PlaceholderText = "Enter Run Animation ID"
+    -- Set the current run animation ID if it exists
+    runIdBox.Text = runAnimationId or ""
+    runIdBox.TextColor3 = Color3.fromRGB(220, 220, 220)
+    runIdBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+    runIdBox.TextSize = 14
+    runIdBox.Font = Enum.Font.Gotham
+    runIdBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    runIdBox.BorderSizePixel = 0
+    local runCorner = Instance.new("UICorner")
+    runCorner.CornerRadius = UDim.new(0, 6)
+    runCorner.Parent = runIdBox
+    runIdBox.Parent = editPage
+    
+    -- Add Focused event to clear the text box when clicked
+    runIdBox.Focused:Connect(function()
+        -- Clear the text and animation ID
+        runIdBox.Text = ""
+        runAnimationId = nil
+        -- Save to file
+        saveCustomAnimations()
+        
+        -- Stop the run animation if it's playing
+        if ghostClone and ghostEnabled and isPlayingRun then
+            -- Stop run animation
+            stopRunAnimation()
+            -- Fall back to idle animation if appropriate
+            if not isPlayingJump and idleAnimationId then
+                task.delay(0.1, function()
+                    playIdleAnimation()
+                end)
+            end
+        end
+    end)
+    
+    -- Add FocusLost event to save the run animation ID
+    runIdBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            if runIdBox.Text ~= "" then
+                -- Update the run animation ID
+                runAnimationId = runIdBox.Text
+                -- Save to file
+                saveCustomAnimations()
+                -- Show confirmation
+                showNotification("Run animation ID saved!", 2)
+                
+                -- If we're currently reanimated and running, restart the run animation
+                if ghostClone and ghostEnabled and isPlayingRun then
+                    -- Stop current animation and play the new one
+                    stopRunAnimation()
+                    -- Brief delay to ensure animation change
+                    task.delay(0.1, function()
+                        playRunAnimation()
+                    end)
+                end
+            else
+                -- Text is empty, remove the run animation ID
+                runAnimationId = nil
+                -- Save to file
+                saveCustomAnimations()
+                -- Show confirmation
+                showNotification("Run animation removed!", 2)
+                
+                -- Stop the run animation if it's playing
+                if ghostClone and ghostEnabled and isPlayingRun then
+                    -- Stop run animation
+                    stopRunAnimation()
+                    -- Fall back to idle animation if appropriate
+                    if not isPlayingJump and idleAnimationId then
+                        task.delay(0.1, function()
+                            playIdleAnimation()
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+    
+    -- Jump animation ID section
+    local jumpLabel = Instance.new("TextLabel")
+    jumpLabel.Size = UDim2.new(0.9, 0, 0, 30)
+    jumpLabel.Position = UDim2.new(0.05, 0, 0, 250)
+    jumpLabel.Text = "Jump Animation ID"
+    jumpLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    jumpLabel.TextSize = 16
+    jumpLabel.Font = Enum.Font.GothamMedium
+    jumpLabel.BackgroundTransparency = 1
+    jumpLabel.TextXAlignment = Enum.TextXAlignment.Left
+    jumpLabel.Parent = editPage
+    
+    local jumpIdBox = Instance.new("TextBox")
+    jumpIdBox.Size = UDim2.new(0.9, 0, 0, 40)
+    jumpIdBox.Position = UDim2.new(0.05, 0, 0, 285)
+    jumpIdBox.PlaceholderText = "Enter Jump Animation ID"
+    -- Set the current jump animation ID if it exists
+    jumpIdBox.Text = jumpAnimationId or ""
+    jumpIdBox.TextColor3 = Color3.fromRGB(220, 220, 220)
+    jumpIdBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+    jumpIdBox.TextSize = 14
+    jumpIdBox.Font = Enum.Font.Gotham
+    jumpIdBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    jumpIdBox.BorderSizePixel = 0
+    local jumpCorner = Instance.new("UICorner")
+    jumpCorner.CornerRadius = UDim.new(0, 6)
+    jumpCorner.Parent = jumpIdBox
+    jumpIdBox.Parent = editPage
+    
+    -- Add Focused event to clear the text box when clicked
+    jumpIdBox.Focused:Connect(function()
+        -- Clear the text and animation ID
+        jumpIdBox.Text = ""
+        jumpAnimationId = nil
+        -- Save to file
+        saveCustomAnimations()
+        
+        -- Stop the jump animation if it's playing
+        if ghostClone and ghostEnabled and isPlayingJump then
+            -- Stop jump animation
+            stopJumpAnimation()
+            -- Fall back to appropriate animation based on state
+            task.delay(0.1, function()
+                -- If we're running and have a run animation, play that
+                if isRunning and runAnimationId then
+                    playRunAnimation()
+                -- Otherwise fall back to idle if we have one
+                elseif not isRunning and idleAnimationId then
+                    playIdleAnimation()
+                end
+            end)
+        end
+    end)
+    
+    -- Add FocusLost event to save the jump animation ID
+    jumpIdBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            if jumpIdBox.Text ~= "" then
+                -- Update the jump animation ID
+                jumpAnimationId = jumpIdBox.Text
+                -- Save to file
+                saveCustomAnimations()
+                -- Show confirmation
+                showNotification("Jump animation ID saved!", 2)
+                
+                -- If we're currently reanimated and jumping, restart the jump animation
+                if ghostClone and ghostEnabled and isPlayingJump then
+                    -- Stop current animation and play the new one
+                    stopJumpAnimation()
+                    -- Brief delay to ensure animation change
+                    task.delay(0.1, function()
+                        playJumpAnimation()
+                    end)
+                end
+            else
+                -- Text is empty, remove the jump animation ID
+                jumpAnimationId = nil
+                -- Save to file
+                saveCustomAnimations()
+                -- Show confirmation
+                showNotification("Jump animation removed!", 2)
+                
+                -- Stop the jump animation if it's playing
+                if ghostClone and ghostEnabled and isPlayingJump then
+                    -- Stop jump animation
+                    stopJumpAnimation()
+                    -- Fall back to appropriate animation based on state
+                    task.delay(0.1, function()
+                        -- If we're running and have a run animation, play that
+                        if isRunning and runAnimationId then
+                            playRunAnimation()
+                        -- Otherwise fall back to idle if we have one
+                        elseif not isRunning and idleAnimationId then
+                            playIdleAnimation()
+                        end
+                    end)
+                end
+            end
+        end
+    end)
+    
+    -- For now, we're not implementing the save functionality as requested
 
     local speedSection = Instance.new("Frame")
     speedSection.Name = "SpeedSection" -- Add name for easier referencing
@@ -2542,7 +4166,7 @@ local function createCustomAnimationsGui()
     end)
 
     updateCustomButtons()
-
+    
     local originalGuiHeight = mainFrame.Size.Y.Offset
     local minimizedGuiHeight = titleBar.Size.Y.Offset
     local minimized = false
@@ -2551,97 +4175,609 @@ local function createCustomAnimationsGui()
     local originalTransparencies = {}
     local originalShadowSize = shadowContainer.Size
     local originalShadowPosition = shadowContainer.Position
-
-for _, child in pairs(contentFrame:GetDescendants()) do
-    if child:IsA("GuiObject") and not originalTransparencies[child] then
-        originalTransparencies[child] = {
-            BackgroundTransparency = child.BackgroundTransparency,
-            TextTransparency = (child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox")) and child.TextTransparency or nil
-        }
+    
+    for _, child in pairs(contentFrame:GetDescendants()) do
+        if child:IsA("GuiObject") and not originalTransparencies[child] then
+            originalTransparencies[child] = {
+                BackgroundTransparency = child.BackgroundTransparency,
+                TextTransparency = (child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox")) and child.TextTransparency or nil
+            }
+        end
     end
-end
-
-minimizeButton.MouseButton1Click:Connect(function()
-    minimized = not minimized
-
-    if minimized then
-        minimizeButton.Text = "+"
-        contentFrame.Visible = false
-
-        -- Fade out UI elements
-        for _, child in pairs(contentFrame:GetDescendants()) do
-            if child:IsA("GuiObject") then
-                TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 1}):Play()
-                if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
-                    TweenService:Create(child, tweenInfoFade, {TextTransparency = 1}):Play()
+    
+    -- Handle edit mode transitions
+    local editMode = false
+    local mainContentElements = {inputFrame, searchBox, scrollFrame, speedSection}
+    
+    -- Initialize animation IDs in the textboxes when entering edit mode
+    local function updateAnimationIdBoxes()
+        if idleIdBox then
+            idleIdBox.Text = idleAnimationId or ""
+        end
+        
+        if runIdBox then
+            runIdBox.Text = runAnimationId or ""
+        end
+        
+        if jumpIdBox then
+            jumpIdBox.Text = jumpAnimationId or ""
+        end
+    end
+    
+    -- Now that editMode is defined, set up the edit button hover events
+    editButton.MouseEnter:Connect(function()
+        editButton.ImageColor3 = Color3.fromRGB(0, 191, 255) -- Blue on hover
+    end)
+    
+    editButton.MouseLeave:Connect(function()
+        -- Only return to white if not in edit mode
+        if not editMode then
+            editButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Return to white when not in edit mode
+        end
+    end)
+    
+    local function enterEditMode()
+        editMode = true
+        -- Change the image color instead of text for ImageButton
+        editButton.ImageColor3 = Color3.fromRGB(0, 191, 255) -- Blue to indicate editing mode
+        
+        -- Fade out main content
+        for _, element in ipairs(mainContentElements) do
+            TweenService:Create(element, tweenInfoFade, {BackgroundTransparency = 1}):Play()
+            
+            -- Special handling for search box placeholder text
+            if element == searchBox then
+                -- Store original placeholder color for restoration later
+                if not originalTransparencies[searchBox].PlaceholderColor3 then
+                    originalTransparencies[searchBox].PlaceholderColor3 = searchBox.PlaceholderColor3
+                end
+                
+                -- Fade out placeholder text by making it fully transparent
+                local originalColor = searchBox.PlaceholderColor3
+                local transparentColor = Color3.new(originalColor.R, originalColor.G, originalColor.B)
+                TweenService:Create(searchBox, tweenInfoFade, {
+                    TextTransparency = 1,
+                    PlaceholderColor3 = Color3.new(transparentColor.R, transparentColor.G, transparentColor.B),
+                }):Play()
+            end
+            
+            -- Fade out all descendant GUI objects
+            for _, child in pairs(element:GetDescendants()) do
+                if child:IsA("GuiObject") then
+                    TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 1}):Play()
+                    if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+                        TweenService:Create(child, tweenInfoFade, {TextTransparency = 1}):Play()
+                    end
                 end
             end
         end
         
-        -- Fade out shadow completely
-        TweenService:Create(shadow, tweenInfoFade, {
-            ImageTransparency = 1 -- Completely transparent
-        }):Play()
-        
-        -- Resize main frame
-        local sizeTween = TweenService:Create(
-            mainFrame,
-            tweenInfoSize,
-            {Size = UDim2.new(0, mainFrame.Size.X.Offset, 0, minimizedGuiHeight)}
-        )
-        sizeTween:Play()
-    else
-        minimizeButton.Text = "−"
-        contentFrame.Visible = true
-        
-        -- Keep shadow invisible during resize
-        shadow.ImageTransparency = 1
-        
-        -- Resize main frame
-        local sizeTween = TweenService:Create(
-            mainFrame,
-            tweenInfoSize,
-            {Size = UDim2.new(0, mainFrame.Size.X.Offset, 0, originalGuiHeight)}
-        )
-        sizeTween:Play()
-        
-        -- Update shadow container position to be behind the current mainFrame position
-        shadowContainer.Size = originalShadowSize
-        -- Update position in completed handler to ensure it's correctly positioned
+        -- After fade out completes, show edit page
+        task.delay(0.3, function()
+            for _, element in ipairs(mainContentElements) do
+                element.Visible = false
+            end
+            
+            -- Reset edit page element transparencies before showing
+            editPage.BackgroundTransparency = 1
+            for _, child in pairs(editPage:GetDescendants()) do
+                if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        child.TextTransparency = 1
+                    elseif child:IsA("TextBox") then
+                        child.TextTransparency = 1
+                        child.BackgroundTransparency = 1
+                    else
+                        child.BackgroundTransparency = 1
+                    end
+                end
+            end
+            
+            editPage.Visible = true
+            
+            -- Fade in edit page
+            for _, child in pairs(editPage:GetDescendants()) do
+                if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        TweenService:Create(child, tweenInfoFade, {TextTransparency = 0}):Play()
+                    elseif child:IsA("TextBox") then
+                        TweenService:Create(child, tweenInfoFade, {TextTransparency = 0, BackgroundTransparency = 0}):Play()
+                    else
+                        TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 0}):Play()
+                    end
+                end
+            end
+        end)
+    end
 
-        sizeTween.Completed:Connect(function()
-            -- Restore UI element transparencies
-            for _, child in pairs(contentFrame:GetDescendants()) do
-                if child:IsA("GuiObject") then
-                    local orig = originalTransparencies[child]
-                    if orig then
-                        if orig.BackgroundTransparency ~= nil then
-                            TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = orig.BackgroundTransparency}):Play()
+    local function exitEditMode()
+        editMode = false
+        -- Reset image color to default
+        editButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- White for normal mode
+        
+        -- Fade out edit page immediately
+        for _, child in pairs(editPage:GetDescendants()) do
+            if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                if child:IsA("TextLabel") or child:IsA("TextButton") then
+                    TweenService:Create(child, tweenInfoFade, {TextTransparency = 1}):Play()
+                elseif child:IsA("TextBox") then
+                    TweenService:Create(child, tweenInfoFade, {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+                else
+                    TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 1}):Play()
+                end
+            end
+        end
+        
+        -- After fade out completes, restore the main content
+        task.delay(0.3, function()
+            -- Hide edit page completely
+            editPage.Visible = false
+            
+            -- First make all main elements visible but fully transparent
+            for _, element in ipairs(mainContentElements) do
+                element.Visible = true
+                
+                -- For each element, ensure it's initially transparent before fading in
+                if not element:IsA("ScrollingFrame") then -- Exclude ScrollingFrame which should remain visible
+                    element.BackgroundTransparency = 1
+                end
+                
+                -- For each child, apply the original transparencies
+                for _, child in pairs(element:GetDescendants()) do
+                    if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                        -- Make fully transparent first
+                        if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+                            child.TextTransparency = 1
                         end
-                        if orig.TextTransparency ~= nil then
-                            TweenService:Create(child, tweenInfoFade, {TextTransparency = orig.TextTransparency}):Play()
-                        end
-                        if orig.Position then
-                            TweenService:Create(child, tweenInfoFade, {Position = orig.Position}):Play()
+                        child.BackgroundTransparency = 1
+                    end
+                end
+            end
+            
+            -- Now fade everything back in with proper original values
+            for _, element in ipairs(mainContentElements) do
+                -- Use original transparency for the element itself
+                local elemOrig = originalTransparencies[element]
+                if elemOrig then
+                    -- Special handling for searchBox placeholder text
+                    if element == searchBox and elemOrig.PlaceholderColor3 then
+                        TweenService:Create(element, tweenInfoFade, {
+                            BackgroundTransparency = elemOrig.BackgroundTransparency or 0,
+                            TextTransparency = elemOrig.TextTransparency or 0,
+                            PlaceholderColor3 = elemOrig.PlaceholderColor3
+                        }):Play()
+                    elseif elemOrig.BackgroundTransparency ~= nil then
+                        TweenService:Create(element, tweenInfoFade, {BackgroundTransparency = elemOrig.BackgroundTransparency}):Play()
+                    end
+                end
+                
+                -- Restore all children to their original state
+                for _, child in pairs(element:GetDescendants()) do
+                    if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                        local orig = originalTransparencies[child]
+                        if orig then
+                            if orig.BackgroundTransparency ~= nil then
+                                TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = orig.BackgroundTransparency}):Play()
+                            end
+                            if orig.TextTransparency ~= nil then
+                                TweenService:Create(child, tweenInfoFade, {TextTransparency = orig.TextTransparency}):Play()
+                            end
                         end
                     end
                 end
             end
             
-            -- Position shadow container before fading in
-            -- Calculate shadow position relative to mainFrame's current position
-            shadowContainer.Size = UDim2.new(0, mainFrame.Size.X.Offset + 32, 0, mainFrame.Size.Y.Offset + 32)
-            shadowContainer.Position = UDim2.new(0, mainFrame.AbsolutePosition.X - 16, 0, mainFrame.AbsolutePosition.Y - 16)
-            
-            -- Fade in shadow with a slight delay after GUI is maximized
+            -- Finally, update the custom buttons to ensure they're correctly displayed
             task.delay(0.1, function()
-                TweenService:Create(shadow, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    ImageTransparency = 0.3
-                }):Play()
+                updateCustomButtons(searchBox.Text)
+                searchDebounce = false
             end)
         end)
+
+        updateCustomButtons()
+        
+        local originalGuiHeight = mainFrame.Size.Y.Offset
+        local minimizedGuiHeight = titleBar.Size.Y.Offset
+        local minimized = false
+        local tweenInfoFade = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tweenInfoSize = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+        local originalTransparencies = {}
+        local originalShadowSize = shadowContainer.Size
+        local originalShadowPosition = shadowContainer.Position
+        
+        for _, child in pairs(contentFrame:GetDescendants()) do
+            if child:IsA("GuiObject") and not originalTransparencies[child] then
+                originalTransparencies[child] = {
+                    BackgroundTransparency = child.BackgroundTransparency,
+                    TextTransparency = (child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox")) and child.TextTransparency or nil
+                }
+            end
+        end
+        
+        -- Handle edit mode transitions
+        local editMode = false
+        local mainContentElements = {inputFrame, searchBox, scrollFrame, speedSection}
+        
+        -- Now that editMode is defined, set up the edit button hover events
+        editButton.MouseEnter:Connect(function()
+            editButton.ImageColor3 = Color3.fromRGB(0, 191, 255) -- Blue on hover
+        end)
+        
+        editButton.MouseLeave:Connect(function()
+            -- Only return to white if not in edit mode
+            if not editMode then
+                editButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Return to white when not in edit mode
+            end
+        end)
+        
+        local function enterEditMode()
+            editMode = true
+            -- Change the image color instead of text for ImageButton
+            editButton.ImageColor3 = Color3.fromRGB(0, 191, 255) -- Blue to indicate editing mode
+            
+            -- Fade out main content
+            for _, element in ipairs(mainContentElements) do
+                TweenService:Create(element, tweenInfoFade, {BackgroundTransparency = 1}):Play()
+                
+                -- Special handling for search box placeholder text
+                if element == searchBox then
+                    -- Store original placeholder color for restoration later
+                    if not originalTransparencies[searchBox].PlaceholderColor3 then
+                        originalTransparencies[searchBox].PlaceholderColor3 = searchBox.PlaceholderColor3
+                    end
+                    
+                    -- Fade out placeholder text by making it fully transparent
+                    local originalColor = searchBox.PlaceholderColor3
+                    local transparentColor = Color3.new(originalColor.R, originalColor.G, originalColor.B)
+                    TweenService:Create(searchBox, tweenInfoFade, {
+                        TextTransparency = 1,
+                        PlaceholderColor3 = Color3.new(transparentColor.R, transparentColor.G, transparentColor.B),
+                    }):Play()
+                end
+                
+                -- Fade out all descendant GUI objects
+                for _, child in pairs(element:GetDescendants()) do
+                    if child:IsA("GuiObject") then
+                        TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 1}):Play()
+                        if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+                            TweenService:Create(child, tweenInfoFade, {TextTransparency = 1}):Play()
+                        end
+                    end
+                end
+            end
+            
+            -- After fade out completes, show edit page
+            task.delay(0.3, function()
+                for _, element in ipairs(mainContentElements) do
+                    element.Visible = false
+                end
+                
+                -- Reset edit page element transparencies before showing
+                editPage.BackgroundTransparency = 1
+                for _, child in pairs(editPage:GetDescendants()) do
+                    if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                        if child:IsA("TextLabel") or child:IsA("TextButton") then
+                            child.TextTransparency = 1
+                        elseif child:IsA("TextBox") then
+                            child.TextTransparency = 1
+                            child.BackgroundTransparency = 1
+                        else
+                            child.BackgroundTransparency = 1
+                        end
+                    end
+                end
+                
+                editPage.Visible = true
+                
+                -- Fade in edit page
+                for _, child in pairs(editPage:GetDescendants()) do
+                    if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                        if child:IsA("TextLabel") or child:IsA("TextButton") then
+                            TweenService:Create(child, tweenInfoFade, {TextTransparency = 0}):Play()
+                        elseif child:IsA("TextBox") then
+                            TweenService:Create(child, tweenInfoFade, {TextTransparency = 0, BackgroundTransparency = 0}):Play()
+                        else
+                            TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 0}):Play()
+                        end
+                    end
+                end
+            end)
+        end
+
+        local function exitEditMode()
+            editMode = false
+            -- Reset image color to default
+            editButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- White for normal mode
+            
+            -- Fade out edit page immediately
+            for _, child in pairs(editPage:GetDescendants()) do
+                if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        TweenService:Create(child, tweenInfoFade, {TextTransparency = 1}):Play()
+                    elseif child:IsA("TextBox") then
+                        TweenService:Create(child, tweenInfoFade, {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+                    else
+                        TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 1}):Play()
+                    end
+                end
+            end
+            
+            -- After fade out completes, restore the main content
+            task.delay(0.3, function()
+                -- Hide edit page completely
+                editPage.Visible = false
+                
+                -- First make all main elements visible but fully transparent
+                for _, element in ipairs(mainContentElements) do
+                    element.Visible = true
+                    
+                    -- For each element, ensure it's initially transparent before fading in
+                    if not element:IsA("ScrollingFrame") then -- Exclude ScrollingFrame which should remain visible
+                        element.BackgroundTransparency = 1
+                    end
+                    
+                    -- For each child, apply the original transparencies
+                    for _, child in pairs(element:GetDescendants()) do
+                        if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                            -- Make fully transparent first
+                            if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+                                child.TextTransparency = 1
+                            end
+                            child.BackgroundTransparency = 1
+                        end
+                    end
+                end
+                
+                -- Now fade everything back in with proper original values
+                for _, element in ipairs(mainContentElements) do
+                    -- Use original transparency for the element itself
+                    local elemOrig = originalTransparencies[element]
+                    if elemOrig then
+                        -- Special handling for searchBox placeholder text
+                        if element == searchBox and elemOrig.PlaceholderColor3 then
+                            TweenService:Create(element, tweenInfoFade, {
+                                BackgroundTransparency = elemOrig.BackgroundTransparency or 0,
+                                TextTransparency = elemOrig.TextTransparency or 0,
+                                PlaceholderColor3 = elemOrig.PlaceholderColor3
+                            }):Play()
+                        elseif elemOrig.BackgroundTransparency ~= nil then
+                            TweenService:Create(element, tweenInfoFade, {BackgroundTransparency = elemOrig.BackgroundTransparency}):Play()
+                        end
+                    end
+                    
+                    -- Restore all children to their original state
+                    for _, child in pairs(element:GetDescendants()) do
+                        if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                            local orig = originalTransparencies[child]
+                            if orig then
+                                if orig.BackgroundTransparency ~= nil then
+                                    TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = orig.BackgroundTransparency}):Play()
+                                end
+                                if orig.TextTransparency ~= nil then
+                                    TweenService:Create(child, tweenInfoFade, {TextTransparency = orig.TextTransparency}):Play()
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                -- Finally, update the custom buttons to ensure they're correctly displayed
+                task.delay(0.1, function()
+                    updateCustomButtons(searchBox.Text)
+                end)
+            end)
+        end
+        
+        -- Set up idle animation ID textbox to save when changed
+        if idleIdBox then
+            idleIdBox.FocusLost:Connect(function(enterPressed)
+                local newIdleId = idleIdBox.Text:gsub("rbxassetid://", ""):match("%d+") or ""
+                if newIdleId ~= idleAnimationId then
+                    -- Store the old value before updating
+                    local oldIdleId = idleAnimationId
+                    
+                    -- Update the ID and save changes
+                    idleAnimationId = newIdleId
+                    saveCustomAnimations()
+                    
+                    -- If ghost mode is enabled, handle animation changes
+                    if ghostEnabled then
+                        -- First stop any currently playing idle animation
+                        stopIdleAnimation()
+                        
+                        -- If the new ID is empty, we only needed to stop the animation
+                        if newIdleId == "" then
+                            -- Make sure the original animate script is enabled for idle/walking animations
+                            if originalAnimateScript and originalAnimateScript.Disabled then
+                                originalAnimateScript.Disabled = false
+                            end
+                        else
+                            -- Otherwise try to play the new idle animation immediately if we're not moving
+                            local humanoid = ghostClone and ghostClone:FindFirstChildWhichIsA("Humanoid")
+                            local isMoving = humanoid and humanoid.MoveDirection.Magnitude > 0
+                            
+                            if not isMoving and not animationState.isRunning then
+                                -- Play the idle animation immediately
+                                playIdleAnimation()
+                            end
+                        end
+                        
+                        -- Always restart the monitoring to ensure it keeps working properly
+                        stopIdleMonitoring()
+                        startIdleMonitoring()
+                    end
+                end
+            end)
+        end
+        
+        if runIdBox then
+            runIdBox.FocusLost:Connect(function(enterPressed)
+                local newRunId = runIdBox.Text:gsub("rbxassetid://", ""):match("%d+") or ""
+                if newRunId ~= runAnimationId then
+                    local oldRunId = runAnimationId
+                    
+                    -- Update the ID and save changes
+                    runAnimationId = newRunId
+                    saveCustomAnimations()
+                    
+                    -- If ghost mode is enabled, handle animation changes
+                    if ghostEnabled then
+                        -- First stop any currently playing run animation
+                        stopRunAnimation()
+                        
+                        -- If the new ID is empty, we only needed to stop the animation
+                        if newRunId == "" then
+                            -- Make sure the original animate script is enabled for walking animations
+                            if originalAnimateScript and originalAnimateScript.Disabled then
+                                originalAnimateScript.Disabled = false
+                            end
+                        else
+                            -- Otherwise try to play the new run animation immediately if we're moving
+                            local humanoid = ghostClone and ghostClone:FindFirstChildWhichIsA("Humanoid")
+                            local isMoving = humanoid and humanoid.MoveDirection.Magnitude > 0
+                            
+                            if isMoving and not (animationState.isRunning and animationState.currentId ~= runAnimationId and animationState.currentId ~= idleAnimationId) then
+                                -- Play the run animation immediately if we're moving
+                                playRunAnimation()
+                            end
+                        end
+                        
+                        -- Always restart the monitoring to ensure it keeps working properly
+                        stopIdleMonitoring()
+                        startIdleMonitoring()
+                    end
+                end
+            end)
+        end
     end
-end)
+    
+    if jumpIdBox then
+        jumpIdBox.FocusLost:Connect(function(enterPressed)
+            local newJumpId = jumpIdBox.Text:gsub("rbxassetid://", ""):match("%d+") or ""
+            if newJumpId ~= jumpAnimationId then
+                local oldJumpId = jumpAnimationId
+                
+                -- Update the ID and save changes
+                jumpAnimationId = newJumpId
+                saveCustomAnimations()
+                
+                -- If ghost mode is enabled, handle animation changes
+                if ghostEnabled then
+                    -- First stop any currently playing jump animation
+                    stopJumpAnimation()
+                    
+                    -- If the new ID is empty, we only needed to stop the animation
+                    if newJumpId == "" then
+                        -- Make sure the original animate script is enabled for jump animations
+                        if originalAnimateScript and originalAnimateScript.Disabled then
+                            originalAnimateScript.Disabled = false
+                        end
+                    end
+                    
+                    -- Always restart the monitoring to ensure it keeps working properly
+                    stopIdleMonitoring()
+                    startIdleMonitoring()
+                end
+            end
+        end)
+    end
+    
+    -- Edit button click handler - toggles between normal view and edit mode
+    editButton.MouseButton1Click:Connect(function()
+        if editMode then
+            exitEditMode()
+        else
+            enterEditMode()
+            updateAnimationIdBoxes() -- Update both animation ID boxes when entering edit mode
+        end
+    end)
+
+    -- Variables moved to the top of the function
+
+    minimizeButton.MouseButton1Click:Connect(function()
+        minimized = not minimized
+
+        if minimized then
+            minimizeButton.Text = "+"
+            contentFrame.Visible = false
+
+            -- Fade out UI elements
+            for _, child in pairs(contentFrame:GetDescendants()) do
+                if child:IsA("GuiObject") then
+                    TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 1}):Play()
+                    if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+                        TweenService:Create(child, tweenInfoFade, {TextTransparency = 1}):Play()
+                    end
+                end
+            end
+            
+            -- Fade out shadow completely
+            TweenService:Create(shadow, tweenInfoFade, {
+                ImageTransparency = 1 -- Completely transparent
+            }):Play()
+            
+            -- Resize main frame
+            local sizeTween = TweenService:Create(
+                mainFrame,
+                tweenInfoSize,
+                {Size = UDim2.new(0, mainFrame.Size.X.Offset, 0, minimizedGuiHeight)}
+            )
+            sizeTween:Play()
+        else
+            minimizeButton.Text = "−"
+            contentFrame.Visible = true
+            
+            -- Keep shadow invisible during resize
+            shadow.ImageTransparency = 1
+            
+            -- Resize main frame
+            local sizeTween = TweenService:Create(
+                mainFrame,
+                tweenInfoSize,
+                {Size = UDim2.new(0, mainFrame.Size.X.Offset, 0, originalGuiHeight)}
+            )
+            sizeTween:Play()
+            
+            -- Update shadow container position to be behind the current mainFrame position
+            shadowContainer.Size = originalShadowSize
+            -- Update position in completed handler to ensure it's correctly positioned
+
+            sizeTween.Completed:Connect(function()
+                -- Restore UI element transparencies
+                for _, child in pairs(contentFrame:GetDescendants()) do
+                    if child:IsA("GuiObject") then
+                        local orig = originalTransparencies[child]
+                        if orig then
+                            if orig.BackgroundTransparency ~= nil then
+                                TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = orig.BackgroundTransparency}):Play()
+                            end
+                            if orig.TextTransparency ~= nil then
+                                TweenService:Create(child, tweenInfoFade, {TextTransparency = orig.TextTransparency}):Play()
+                            end
+                            if orig.Position then
+                                TweenService:Create(child, tweenInfoFade, {Position = orig.Position}):Play()
+                            end
+                        end
+                    end
+                end
+                
+                -- Position shadow container before fading in
+                -- Calculate shadow position relative to mainFrame's current position
+                shadowContainer.Size = UDim2.new(0, mainFrame.Size.X.Offset + 32, 0, mainFrame.Size.Y.Offset + 32)
+                shadowContainer.Position = UDim2.new(0, mainFrame.AbsolutePosition.X - 16, 0, mainFrame.AbsolutePosition.Y - 16)
+                
+                -- Fade in shadow with a slight delay after GUI is maximized
+                task.delay(0.1, function()
+                    TweenService:Create(shadow, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        ImageTransparency = 0.3
+                    }):Play()
+                    
+                    -- Explicitly refresh the custom animation buttons to ensure they appear
+                    updateCustomButtons(searchBox.Text)
+                end)
+            end)
+        end
+    end)
 
     local dragging = false
     local dragOffset = Vector2.new(0, 0)
