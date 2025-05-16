@@ -2738,7 +2738,7 @@ local function createCustomAnimationsGui()
     -- Add button (right, dark theme, blue accent on hover)
     local addButton = Instance.new("TextButton")
     addButton.Size = UDim2.new(0.18, 0, 0, 30)
-    addButton.Position = UDim2.new(0.81, 0, 0.5, -15)
+    addButton.Position = UDim2.new(0.80, 0, 0.5, -15)
     addButton.Text = "Add"
     addButton.TextColor3 = Color3.fromRGB(220, 220, 255)
     addButton.TextSize = 15
