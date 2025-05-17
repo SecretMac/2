@@ -2797,20 +2797,37 @@ local function createAnimationListGui()
     musicScrollFrame.Visible = false
     musicScrollFrame.Parent = contentFrame
 
+    -- Update the scroll frames to make room for the speed section
+    allScrollFrame.Size = UDim2.new(0.9, 0, 1, -170) -- Reduced height to make more room
+    favScrollFrame.Size = UDim2.new(0.9, 0, 1, -170)
+    freakyScrollFrame.Size = UDim2.new(0.9, 0, 1, -170)
+    musicScrollFrame.Size = UDim2.new(0.9, 0, 1, -170)
+
     local speedSection = Instance.new("Frame")
     speedSection.Name = "SpeedSection"
-    speedSection.Size = UDim2.new(0.9, 0, 0, 90) -- Adjusted height for more compact markers
-    speedSection.Position = UDim2.new(0.05, 0, 0, 350)
+    speedSection.Size = UDim2.new(0.9, 0, 0, 110) -- Increased height to accommodate speed text
+    speedSection.Position = UDim2.new(0.05, 0, 0, 330) -- Adjusted position
     speedSection.BackgroundTransparency = 1
     speedSection.Parent = contentFrame
-
-    -- Speed label removed as requested
-
+    
+    -- Add speed text label
+    local speedTextLabel = Instance.new("TextLabel")
+    speedTextLabel.Name = "SpeedTextLabel"
+    speedTextLabel.Size = UDim2.new(1, 0, 0, 20)
+    speedTextLabel.Position = UDim2.new(0, 0, 0, 5)
+    speedTextLabel.BackgroundTransparency = 1
+    speedTextLabel.Text = "Speed: 100%"
+    speedTextLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    speedTextLabel.TextSize = 14
+    speedTextLabel.Font = Enum.Font.GothamSemibold
+    speedTextLabel.Parent = speedSection
+    
     local speedSliderBG = Instance.new("Frame")
     speedSliderBG.Size = UDim2.new(1, 0, 0, 6)
     speedSliderBG.Position = UDim2.new(0, 0, 0, 30)
     speedSliderBG.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     speedSliderBG.BorderSizePixel = 0
+    
     local speedBGCorner = Instance.new("UICorner")
     speedBGCorner.CornerRadius = UDim.new(1, 0)
     speedBGCorner.Parent = speedSliderBG
@@ -2844,6 +2861,7 @@ local function createAnimationListGui()
         local handleTween = TweenService:Create(speedSliderHandle, tweenInfo, {Position = UDim2.new(math.clamp(fillValue, 0, 1), -8, 0.5, -8)})
         handleTween:Play()
         animationState.speed = value
+        speedTextLabel.Text = "Speed: " .. tostring(math.floor(value * 100)) .. "%"
     end
 
     updateSpeedSlider(1)
@@ -3542,7 +3560,7 @@ local function createAnimationListGui()
             keybindButton.Text = "..."
 
             local connection
-            connection = UserInputService.InputBegan:Connect(function(input)
+            connection = UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
                 if not keybindInputActive then connection:Disconnect() return end -- Check if still binding this
 
                 if input.UserInputType == Enum.UserInputType.Keyboard then
@@ -4504,11 +4522,22 @@ local function createCustomAnimationsGui()
 
     local speedSection = Instance.new("Frame")
     speedSection.Name = "SpeedSection" -- Add name for easier referencing
-    speedSection.Size = UDim2.new(0.9, 0, 0, 90) -- Increased height for markers
-    speedSection.Position = UDim2.new(0.05, 0, 0, 350)
+    speedSection.Size = UDim2.new(0.9, 0, 0, 110) -- Increased height to accommodate speed text
+    speedSection.Position = UDim2.new(0.05, 0, 0, 330) -- Adjusted position to avoid overlap
     speedSection.BackgroundTransparency = 1
     speedSection.Parent = contentFrame
-
+    
+    -- Add speed text label
+    local speedTextLabel = Instance.new("TextLabel")
+    speedTextLabel.Name = "SpeedTextLabel"
+    speedTextLabel.Size = UDim2.new(1, 0, 0, 20)
+    speedTextLabel.Position = UDim2.new(0, 0, 0, 5)
+    speedTextLabel.BackgroundTransparency = 1
+    speedTextLabel.Text = "Speed: 100%"
+    speedTextLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    speedTextLabel.TextSize = 14
+    speedTextLabel.Font = Enum.Font.GothamSemibold
+    speedTextLabel.Parent = speedSection
 
     local speedSliderBG = Instance.new("Frame")
     speedSliderBG.Size = UDim2.new(1, 0, 0, 6)
@@ -4548,6 +4577,10 @@ local function createCustomAnimationsGui()
         local handleTween = TweenService:Create(speedSliderHandle, tweenInfo, {Position = UDim2.new(math.clamp(fillValue, 0, 1), -8, 0.5, -8)})
         handleTween:Play()
         animationState.speed = value
+        
+        -- Update the speed percentage text
+        local speedPercentage = math.floor(value * 100)
+        speedTextLabel.Text = "Speed: " .. speedPercentage .. "%"
     end
 
     updateSpeedSlider(1)
