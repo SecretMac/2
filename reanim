@@ -49,6 +49,226 @@ local function fetchAndSaveEditIcon()
     end
 end
 
+-- Function to fetch and save the Garry's Mod logo
+local function fetchAndSaveGmodLogo()
+    local logoUrl = "https://github.com/SystemNasa/roblox/blob/main/intro/48x48.png?raw=true"
+    local logoFilePath = "Stalkie/intro/gmod_logo.png"
+    
+    -- Ensure the folder exists
+    ensureStalkieFolder()
+    
+    -- Check if the file already exists
+    if fileExists(logoFilePath) then
+        return logoFilePath
+    end
+    
+    -- Try to fetch and save the logo
+    local success, logoData = pcall(function()
+        return game:HttpGet(logoUrl)
+    end)
+    
+    if success and logoData then
+        writefile(logoFilePath, logoData)
+        return logoFilePath
+    else
+        warn("Failed to fetch Garry's Mod logo: " .. (logoData or "Unknown error"))
+        return nil
+    end
+end
+
+-- Function to fetch and save the Minecraft icon
+local function fetchAndSaveMinecraftIcon()
+    local iconUrl = "https://github.com/SystemNasa/roblox/blob/main/intro/64x64.png?raw=true"
+    local iconFilePath = "Stalkie/intro/minecraft_icon.png"
+    
+    -- Ensure the folder exists
+    ensureStalkieFolder()
+    
+    -- Check if the file already exists
+    if fileExists(iconFilePath) then
+        return iconFilePath
+    end
+    
+    -- Try to fetch and save the icon
+    local success, iconData = pcall(function()
+        return game:HttpGet(iconUrl)
+    end)
+    
+    if success and iconData then
+        writefile(iconFilePath, iconData)
+        return iconFilePath
+    else
+        warn("Failed to fetch Minecraft icon: " .. (iconData or "Unknown error"))
+        return nil
+    end
+end
+
+-- Function to fetch and save the Mario icon
+local function fetchAndSaveMarioIcon()
+    local iconUrl = "https://github.com/SystemNasa/roblox/blob/main/intro/mario.png?raw=true"
+    local iconFilePath = "Stalkie/intro/mario_icon.png"
+    
+    -- Ensure the folder exists
+    ensureStalkieFolder()
+    
+    -- Check if the file already exists
+    if fileExists(iconFilePath) then
+        return iconFilePath
+    end
+    
+    -- Try to fetch and save the icon
+    local success, iconData = pcall(function()
+        return game:HttpGet(iconUrl)
+    end)
+    
+    if success and iconData then
+        writefile(iconFilePath, iconData)
+        return iconFilePath
+    else
+        warn("Failed to fetch Mario icon: " .. (iconData or "Unknown error"))
+        return nil
+    end
+end
+
+-- Function to fetch and save the Sonic icon
+local function fetchAndSaveSonicIcon()
+    local iconUrl = "https://github.com/SystemNasa/roblox/blob/main/intro/sonic.png?raw=true"
+    local iconFilePath = "Stalkie/intro/sonic_icon.png"
+    
+    -- Ensure the folder exists
+    ensureStalkieFolder()
+    
+    -- Check if the file already exists
+    if fileExists(iconFilePath) then
+        return iconFilePath
+    end
+    
+    -- Try to fetch and save the icon
+    local success, iconData = pcall(function()
+        return game:HttpGet(iconUrl)
+    end)
+    
+    if success and iconData then
+        writefile(iconFilePath, iconData)
+        return iconFilePath
+    else
+        warn("Failed to fetch Sonic icon: " .. (iconData or "Unknown error"))
+        return nil
+    end
+end
+
+-- Function to fetch and save the Zombie icon
+local function fetchAndSaveZombieIcon()
+    local iconUrl = "https://github.com/SystemNasa/roblox/blob/main/intro/zombie.png?raw=true"
+    local iconFilePath = "Stalkie/intro/zombie_icon.png"
+    
+    -- Ensure the folder exists
+    ensureStalkieFolder()
+    
+    -- Check if the file already exists
+    if fileExists(iconFilePath) then
+        return iconFilePath
+    end
+    
+    -- Try to fetch and save the icon
+    local success, iconData = pcall(function()
+        return game:HttpGet(iconUrl)
+    end)
+    
+    if success and iconData then
+        writefile(iconFilePath, iconData)
+        return iconFilePath
+    else
+        warn("Failed to fetch Zombie icon: " .. (iconData or "Unknown error"))
+        return nil
+    end
+end
+
+-- Function to get Garry's Mod logo as content ID
+local function getGmodLogoAsContent()
+    local logoFilePath = "Stalkie/intro/gmod_logo.png"
+    
+    -- Ensure folder and file exist
+    fetchAndSaveGmodLogo()
+    
+    -- Check if the file exists now
+    if fileExists(logoFilePath) then
+        -- Convert to content ID
+        return getcustomasset(logoFilePath)
+    else
+        -- Fallback
+        return ""
+    end
+end
+
+-- Function to get Minecraft icon as content ID
+local function getMinecraftIconAsContent()
+    local iconFilePath = "Stalkie/intro/minecraft_icon.png"
+    
+    -- Ensure folder and file exist
+    fetchAndSaveMinecraftIcon()
+    
+    -- Check if the file exists now
+    if fileExists(iconFilePath) then
+        -- Convert to content ID
+        return getcustomasset(iconFilePath)
+    else
+        -- Fallback
+        return ""
+    end
+end
+
+-- Function to get Mario icon as content ID
+local function getMarioIconAsContent()
+    local iconFilePath = "Stalkie/intro/mario_icon.png"
+    
+    -- Ensure folder and file exist
+    fetchAndSaveMarioIcon()
+    
+    -- Check if the file exists now
+    if fileExists(iconFilePath) then
+        -- Convert to content ID
+        return getcustomasset(iconFilePath)
+    else
+        -- Fallback
+        return ""
+    end
+end
+
+-- Function to get Sonic icon as content ID
+local function getSonicIconAsContent()
+    local iconFilePath = "Stalkie/intro/sonic_icon.png"
+    
+    -- Ensure folder and file exist
+    fetchAndSaveSonicIcon()
+    
+    -- Check if the file exists now
+    if fileExists(iconFilePath) then
+        -- Convert to content ID
+        return getcustomasset(iconFilePath)
+    else
+        -- Fallback
+        return ""
+    end
+end
+
+-- Function to get Zombie icon as content ID
+local function getZombieIconAsContent()
+    local iconFilePath = "Stalkie/intro/zombie_icon.png"
+    
+    -- Ensure folder and file exist
+    fetchAndSaveZombieIcon()
+    
+    -- Check if the file exists now
+    if fileExists(iconFilePath) then
+        -- Convert to content ID
+        return getcustomasset(iconFilePath)
+    else
+        -- Fallback
+        return ""
+    end
+end
+
 -- Function to get edit icon as a content ID
 local function getEditIconAsContent()
     local iconFilePath = "Stalkie/intro/white.png"
@@ -116,6 +336,8 @@ local animationState = {
 }
 
 local BuiltInAnimationsR15 = {}
+local FreakyAnimations = {}
+local FreakyAnimationsOrder = {}
 local BuiltInAnimationsOrder = {}
 local hasFetchedAnimations = false
 
@@ -149,6 +371,32 @@ end
 
 setupRespawnAtDeath()
 
+local function fetchFreakyAnimationsFromGitHub()
+    local url = "https://raw.githubusercontent.com/SystemNasa/roblox/refs/heads/main/freaky.lua"
+    local success, response = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if success then
+        local loadSuccess, result = pcall(function()
+            return loadstring(response)()
+        end)
+        if loadSuccess and type(result) == "table" then
+            FreakyAnimations = result
+            FreakyAnimationsOrder = {}
+            for line in response:gmatch("[^\r\n]+") do
+                local name = line:match('%["([^"]+)"%]')
+                if name and result[name] and not table.find(FreakyAnimationsOrder, name) then
+                    table.insert(FreakyAnimationsOrder, name)
+                end
+            end
+        else
+            warn("Failed to load freaky animations: " .. tostring(result))
+        end
+    else
+        warn("Failed to fetch freaky animations: " .. tostring(response))
+    end
+end
+
 local function fetchAnimationsFromGitHub()
     if hasFetchedAnimations then return end
     hasFetchedAnimations = true
@@ -169,6 +417,9 @@ local function fetchAnimationsFromGitHub()
                     table.insert(BuiltInAnimationsOrder, name)
                 end
             end
+            
+            -- Also fetch freaky animations
+            fetchFreakyAnimationsFromGitHub()
         else
             warn("Failed to compile GitHub script:", result)
         end
@@ -2166,10 +2417,8 @@ local function playFakeAnimation(animationId, forcePlay)
         return
     end
     
-    -- Debug output to help track animation playing
-    if animationId == idleAnimationId then
-        print("Attempting to play idle animation ID: " .. idleAnimationId)
-    end
+    -- Debug output removed as requested by user
+    -- Animation tracking continues silently
     
     -- If this is the idle animation and we're forcing it to play (from movement detection)
     -- we need to track that we're playing the idle animation
@@ -2434,7 +2683,7 @@ local function createAnimationListGui()
     tabFrame.Parent = contentFrame
 
     local allTabButton = Instance.new("TextButton")
-    allTabButton.Size = UDim2.new(0.31, -5, 0, 35)
+    allTabButton.Size = UDim2.new(0.24, -5, 0, 35)
     allTabButton.Position = UDim2.new(0, 0, 0, 0)
     allTabButton.Text = "All"
     allTabButton.TextColor3 = Color3.fromRGB(220, 220, 220)
@@ -2448,10 +2697,10 @@ local function createAnimationListGui()
     allTabButton.Parent = tabFrame
 
     local favTabButton = Instance.new("TextButton")
-    favTabButton.Size = UDim2.new(0.31, -5, 0, 35)
-    favTabButton.Position = UDim2.new(0.34, 5, 0, 0)
-    favTabButton.Text = "Favorites"
-    favTabButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+    favTabButton.Size = UDim2.new(0.24, -5, 0, 35)
+    favTabButton.Position = UDim2.new(0.25, 5, 0, 0)
+    favTabButton.Text = "Favs"
+    favTabButton.TextColor3 = Color3.fromRGB(255, 255, 0)
     favTabButton.TextSize = 16
     favTabButton.Font = Enum.Font.GothamSemibold
     favTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
@@ -2460,12 +2709,26 @@ local function createAnimationListGui()
     favTabCorner.CornerRadius = UDim.new(0, 8)
     favTabCorner.Parent = favTabButton
     favTabButton.Parent = tabFrame
+    
+    local freakyTabButton = Instance.new("TextButton")
+    freakyTabButton.Size = UDim2.new(0.24, -5, 0, 35)
+    freakyTabButton.Position = UDim2.new(0.5, 5, 0, 0)
+    freakyTabButton.Text = "Freaky"
+    freakyTabButton.TextColor3 = Color3.fromRGB(255, 20, 147)
+    freakyTabButton.TextSize = 16
+    freakyTabButton.Font = Enum.Font.GothamSemibold
+    freakyTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    freakyTabButton.BorderSizePixel = 0
+    local freakyTabCorner = Instance.new("UICorner")
+    freakyTabCorner.CornerRadius = UDim.new(0, 8)
+    freakyTabCorner.Parent = freakyTabButton
+    freakyTabButton.Parent = tabFrame
 
     local musicTabButton = Instance.new("TextButton")
-    musicTabButton.Size = UDim2.new(0.31, -5, 0, 35)
-    musicTabButton.Position = UDim2.new(0.68, 5, 0, 0)
+    musicTabButton.Size = UDim2.new(0.24, -5, 0, 35)
+    musicTabButton.Position = UDim2.new(0.75, 5, 0, 0)
     musicTabButton.Text = "Music"
-    musicTabButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+    musicTabButton.TextColor3 = Color3.fromRGB(0, 150, 255)
     musicTabButton.TextSize = 16
     musicTabButton.Font = Enum.Font.GothamSemibold
     musicTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
@@ -2492,32 +2755,43 @@ local function createAnimationListGui()
     searchBox.Parent = contentFrame
 
     local allScrollFrame = Instance.new("ScrollingFrame")
-    allScrollFrame.Size = UDim2.new(0.9, 0, 0, 235)
+    allScrollFrame.Size = UDim2.new(0.9, 0, 1, -120)
     allScrollFrame.Position = UDim2.new(0.05, 0, 0, 100)
     allScrollFrame.BackgroundTransparency = 1
     allScrollFrame.BorderSizePixel = 0
-    allScrollFrame.ScrollBarThickness = 4
+    allScrollFrame.ScrollBarThickness = 6
     allScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
     allScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     allScrollFrame.Parent = contentFrame
-
+    
     local favScrollFrame = Instance.new("ScrollingFrame")
-    favScrollFrame.Size = UDim2.new(0.9, 0, 0, 235)
+    favScrollFrame.Size = UDim2.new(0.9, 0, 1, -120)
     favScrollFrame.Position = UDim2.new(0.05, 0, 0, 100)
     favScrollFrame.BackgroundTransparency = 1
     favScrollFrame.BorderSizePixel = 0
-    favScrollFrame.ScrollBarThickness = 4
+    favScrollFrame.ScrollBarThickness = 6
     favScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
     favScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     favScrollFrame.Visible = false
     favScrollFrame.Parent = contentFrame
-
+    
+    local freakyScrollFrame = Instance.new("ScrollingFrame")
+    freakyScrollFrame.Size = UDim2.new(0.9, 0, 1, -120)
+    freakyScrollFrame.Position = UDim2.new(0.05, 0, 0, 100)
+    freakyScrollFrame.BackgroundTransparency = 1
+    freakyScrollFrame.BorderSizePixel = 0
+    freakyScrollFrame.ScrollBarThickness = 6
+    freakyScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+    freakyScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    freakyScrollFrame.Visible = false
+    freakyScrollFrame.Parent = contentFrame
+    
     local musicScrollFrame = Instance.new("ScrollingFrame")
-    musicScrollFrame.Size = UDim2.new(0.9, 0, 0, 235)
+    musicScrollFrame.Size = UDim2.new(0.9, 0, 1, -120)
     musicScrollFrame.Position = UDim2.new(0.05, 0, 0, 100)
     musicScrollFrame.BackgroundTransparency = 1
     musicScrollFrame.BorderSizePixel = 0
-    musicScrollFrame.ScrollBarThickness = 4
+    musicScrollFrame.ScrollBarThickness = 6
     musicScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
     musicScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     musicScrollFrame.Visible = false
@@ -2530,14 +2804,7 @@ local function createAnimationListGui()
     speedSection.BackgroundTransparency = 1
     speedSection.Parent = contentFrame
 
-    local speedLabel = Instance.new("TextLabel")
-    speedLabel.Size = UDim2.new(1, 0, 0, 20)
-    speedLabel.Text = "Animation Speed: 100%"
-    speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    speedLabel.TextSize = 14
-    speedLabel.Font = Enum.Font.GothamMedium
-    speedLabel.BackgroundTransparency = 1
-    speedLabel.Parent = speedSection
+    -- Speed label removed as requested
 
     local speedSliderBG = Instance.new("Frame")
     speedSliderBG.Size = UDim2.new(1, 0, 0, 6)
@@ -2576,7 +2843,6 @@ local function createAnimationListGui()
         tween:Play()
         local handleTween = TweenService:Create(speedSliderHandle, tweenInfo, {Position = UDim2.new(math.clamp(fillValue, 0, 1), -8, 0.5, -8)})
         handleTween:Play()
-        speedLabel.Text = "Animation Speed: " .. math.floor(value * 100) .. "%"
         animationState.speed = value
     end
 
@@ -2777,8 +3043,13 @@ local function createAnimationListGui()
 
     local function updateAnimationButtons(tab, searchText)
         searchText = searchText or ""
-        local scrollFrame = (tab == "all") and allScrollFrame or (tab == "favorites") and favScrollFrame or musicScrollFrame
-        local animationList = (tab == "all" or tab == "music") and BuiltInAnimationsR15 or favoriteAnimations
+        local scrollFrame = (tab == "all") and allScrollFrame or 
+                          (tab == "favorites") and favScrollFrame or 
+                          (tab == "freaky") and freakyScrollFrame or 
+                          musicScrollFrame
+        local animationList = (tab == "all" or tab == "music") and BuiltInAnimationsR15 or 
+                            (tab == "freaky") and FreakyAnimations or 
+                            favoriteAnimations
 
         for _, buttonData in pairs(animationButtons) do
             if buttonData.Container then
@@ -2793,6 +3064,23 @@ local function createAnimationListGui()
         if tab == "all" then
             for _, animName in ipairs(BuiltInAnimationsOrder) do
                 local animId = BuiltInAnimationsR15[animName]
+                if animId and animName then
+                    local lowerAnimName = string.lower(animName)
+                    if searchText == "" or string.find(lowerAnimName, lowerSearchText, 1, true) then
+                        local buttonData = createAnimationButton(animName, animId, scrollFrame)
+                        buttonData.Container.Position = UDim2.new(0, 0, 0, yOffset)
+                        local keybind = animationKeybinds[animName]
+                        if keybind then
+                            buttonData.KeybindButton.Text = keybind.Name
+                            buttonData.RemoveBindButton.Visible = true
+                        end
+                        yOffset = yOffset + 50
+                    end
+                end
+            end
+        elseif tab == "freaky" then
+            for _, animName in ipairs(FreakyAnimationsOrder) do
+                local animId = FreakyAnimations[animName]
                 if animId and animName then
                     local lowerAnimName = string.lower(animName)
                     if searchText == "" or string.find(lowerAnimName, lowerSearchText, 1, true) then
@@ -2849,9 +3137,11 @@ local function createAnimationListGui()
     allTabButton.MouseButton1Click:Connect(function()
         allScrollFrame.Visible = true
         favScrollFrame.Visible = false
+        freakyScrollFrame.Visible = false
         musicScrollFrame.Visible = false
         allTabButton.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
         favTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        freakyTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         musicTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         updateAnimationButtons("all", searchBox.Text)
     end)
@@ -2859,19 +3149,35 @@ local function createAnimationListGui()
     favTabButton.MouseButton1Click:Connect(function()
         allScrollFrame.Visible = false
         favScrollFrame.Visible = true
+        freakyScrollFrame.Visible = false
         musicScrollFrame.Visible = false
         allTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         favTabButton.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        freakyTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         musicTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         updateAnimationButtons("favorites", searchBox.Text)
+    end)
+    
+    freakyTabButton.MouseButton1Click:Connect(function()
+        allScrollFrame.Visible = false
+        favScrollFrame.Visible = false
+        freakyScrollFrame.Visible = true
+        musicScrollFrame.Visible = false
+        allTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        favTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        freakyTabButton.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        musicTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        updateAnimationButtons("freaky", searchBox.Text)
     end)
 
     musicTabButton.MouseButton1Click:Connect(function()
         allScrollFrame.Visible = false
         favScrollFrame.Visible = false
+        freakyScrollFrame.Visible = false
         musicScrollFrame.Visible = true
         allTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         favTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        freakyTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         musicTabButton.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
         updateAnimationButtons("music", searchBox.Text)
     end)
@@ -3877,6 +4183,324 @@ local function createCustomAnimationsGui()
     end)
     
     -- For now, we're not implementing the save functionality as requested
+    
+    -- Set up game icons at the bottom of the edit page
+    local iconBaseSize = 35 -- Base size of icons (reduced from 42)
+    local iconHoverSize = 42 -- Size when hovering (reduced from 50)
+    local baseYPosition = 0.99 -- Y position (scale)
+    local baseYOffset = 30 -- Y position (offset)
+    
+    -- Icon positioning for even spacing
+    local totalIcons = 5 -- Total number of game icons
+    local leftMargin = 0.05 -- 5% margin from left edge (decreased to shift icons left)
+    local rightMargin = 0.20 -- 20% margin from right edge (increased to create more space on right)
+    local usableWidth = 1 - leftMargin - rightMargin -- Available width for icons (as scale)
+    
+    -- Function to create game icon with improved effects
+    local function createGameIcon(position, getImageFunc, name)
+        local icon = Instance.new("ImageButton")
+        icon.Name = "GameIcon_" .. name -- Give the icon a specific name for easy identification
+        icon.Size = UDim2.new(0, iconBaseSize, 0, iconBaseSize)
+        icon.Position = position
+        icon.BackgroundTransparency = 1 -- Make background fully transparent
+        icon.AnchorPoint = Vector2.new(0, 0.5)
+        
+        -- Properties to ensure proper transparency
+        icon.ScaleType = Enum.ScaleType.Fit -- Scale the image properly without distortion
+        icon.ImageTransparency = 1 -- Start fully transparent for fade-in effect
+        icon.BorderSizePixel = 0 -- Remove border
+        icon.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Ensure no color tinting
+        
+        -- No glow effect to avoid visual artifacts
+        
+        -- Load the image
+        local image = getImageFunc()
+        if image and image ~= "" then
+            icon.Image = image
+        end
+        
+        icon.Parent = editPage
+        
+        -- Track if we're currently animating to prevent animation conflicts
+        local isAnimating = false
+        local isHovering = false
+        
+        -- Add hover effect with improved responsiveness
+        icon.MouseEnter:Connect(function()
+            isHovering = true
+            
+            -- Create faster, more responsive hover effect
+            local hoverTweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+            
+            -- Scale up the icon slightly bigger than target first for a snappier feel
+            local initialScaleTween = TweenService:Create(icon, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                {Size = UDim2.new(0, iconHoverSize + 2, 0, iconHoverSize + 2)})
+            
+            -- Then scale to the correct size with a slight bounce effect
+            local finalScaleTween = TweenService:Create(icon, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0), 
+                {Size = UDim2.new(0, iconHoverSize, 0, iconHoverSize)})
+            
+            -- Play the scale animation
+            initialScaleTween:Play()
+            
+            -- After the initial quick expansion, play the final bounce
+            task.delay(0.08, function()
+                if isHovering then -- Only continue if still hovering
+                    finalScaleTween:Play()
+                end
+            end)
+        end)
+        
+        icon.MouseLeave:Connect(function()
+            isHovering = false
+            
+            -- Create faster, responsive unhover effect
+            local unhoverTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            
+            -- Scale back to original size smoothly
+            local scaleTween = TweenService:Create(icon, unhoverTweenInfo, 
+                {Size = UDim2.new(0, iconBaseSize, 0, iconBaseSize)})
+            
+            -- Play tween
+            scaleTween:Play()
+        end)
+        
+        -- Add bounce click effect
+        icon.MouseButton1Down:Connect(function()
+            if isAnimating then return end
+            isAnimating = true
+            
+            -- Quick scale down for button press feel
+            local pressTween = TweenService:Create(icon, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
+                {Size = UDim2.new(0, (isHovering and iconHoverSize or iconBaseSize) * 0.85, 0, (isHovering and iconHoverSize or iconBaseSize) * 0.85)})
+            pressTween:Play()
+        end)
+        
+        -- Complete the bounce effect on click release
+        icon.MouseButton1Up:Connect(function()
+            -- Create a bouncy animation when button is released
+            local bounceTweenInfo = TweenInfo.new(0.35, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out, 0, false, 0)
+            
+            -- Scale back up with a bounce
+            local targetSize = isHovering and iconHoverSize or iconBaseSize
+            local releaseTween = TweenService:Create(icon, bounceTweenInfo, 
+                {Size = UDim2.new(0, targetSize, 0, targetSize)})
+            
+            releaseTween:Play()
+            
+            -- Reset animation state after animation completes
+            task.delay(0.35, function()
+                isAnimating = false
+            end)
+            
+            -- First stop any current animations to ensure clean transition
+            if ghostClone and ghostEnabled then
+                stopFakeAnimation() -- Properly stop any running animation
+            end
+            
+            -- Apply preset animation IDs based on the icon
+            if name == "Garry's Mod" then
+                -- Set Garry's Mod presets
+                -- Store previous values to check if we need to reload
+                local previousIdle = idleAnimationId
+                local previousRun = runAnimationId
+                local previousJump = jumpAnimationId
+                
+                -- Apply new preset values
+                idleAnimationId = "135106186777948"
+                runAnimationId = "133961206309287"
+                jumpAnimationId = "85344811119483"
+                
+                -- Update input boxes if they exist (with clearing first)
+                if idleIdBox then 
+                    idleIdBox.Text = ""
+                    task.wait(0.05) -- Small delay to ensure clear takes effect
+                    idleIdBox.Text = idleAnimationId 
+                end
+                if runIdBox then 
+                    runIdBox.Text = ""
+                    task.wait(0.05)
+                    runIdBox.Text = runAnimationId 
+                end
+                if jumpIdBox then 
+                    jumpIdBox.Text = ""
+                    task.wait(0.05)
+                    jumpIdBox.Text = jumpAnimationId 
+                end
+                
+                print("Set Garry's Mod animation presets")
+            elseif name == "Minecraft" then
+                -- Set Minecraft presets
+                -- Store previous values to check if we need to reload
+                local previousIdle = idleAnimationId
+                local previousRun = runAnimationId
+                local previousJump = jumpAnimationId
+                
+                -- Apply new preset values
+                idleAnimationId = "87940284786141"
+                runAnimationId = "121737313718701"
+                jumpAnimationId = "109863054445161"
+                
+                -- Update input boxes if they exist (with clearing first)
+                if idleIdBox then 
+                    idleIdBox.Text = ""
+                    task.wait(0.05) -- Small delay to ensure clear takes effect
+                    idleIdBox.Text = idleAnimationId 
+                end
+                if runIdBox then 
+                    runIdBox.Text = ""
+                    task.wait(0.05)
+                    runIdBox.Text = runAnimationId 
+                end
+                if jumpIdBox then 
+                    jumpIdBox.Text = ""
+                    task.wait(0.05)
+                    jumpIdBox.Text = jumpAnimationId 
+                end
+                
+                print("Set Minecraft animation presets")
+            elseif name == "Sonic" then
+                -- Set Sonic presets
+                -- Store previous values to check if we need to reload
+                local previousIdle = idleAnimationId
+                local previousRun = runAnimationId
+                local previousJump = jumpAnimationId
+                
+                -- Apply new preset values
+                idleAnimationId = "79959087101646"
+                runAnimationId = "85348354340876"
+                jumpAnimationId = "124102683487743"
+                
+                -- Update input boxes if they exist (with clearing first)
+                if idleIdBox then 
+                    idleIdBox.Text = ""
+                    task.wait(0.05) -- Small delay to ensure clear takes effect
+                    idleIdBox.Text = idleAnimationId 
+                end
+                if runIdBox then 
+                    runIdBox.Text = ""
+                    task.wait(0.05)
+                    runIdBox.Text = runAnimationId 
+                end
+                if jumpIdBox then 
+                    jumpIdBox.Text = ""
+                    task.wait(0.05)
+                    jumpIdBox.Text = jumpAnimationId 
+                end
+                
+                print("Set Sonic animation presets")
+            elseif name == "Mario" then
+                -- Set Mario presets
+                -- Store previous values to check if we need to reload
+                local previousIdle = idleAnimationId
+                local previousRun = runAnimationId
+                local previousJump = jumpAnimationId
+                
+                -- Apply new preset values
+                idleAnimationId = "123535545508396"
+                runAnimationId = "94048285722172"
+                jumpAnimationId = "85998191316243"
+                
+                -- Update input boxes if they exist (with clearing first)
+                if idleIdBox then 
+                    idleIdBox.Text = ""
+                    task.wait(0.05) -- Small delay to ensure clear takes effect
+                    idleIdBox.Text = idleAnimationId 
+                end
+                if runIdBox then 
+                    runIdBox.Text = ""
+                    task.wait(0.05)
+                    runIdBox.Text = runAnimationId 
+                end
+                if jumpIdBox then 
+                    jumpIdBox.Text = ""
+                    task.wait(0.05)
+                    jumpIdBox.Text = jumpAnimationId 
+                end
+                
+                print("Set Mario animation presets")
+            elseif name == "Zombie" then
+                -- Set Zombie presets
+                -- Store previous values to check if we need to reload
+                local previousIdle = idleAnimationId
+                local previousRun = runAnimationId
+                local previousJump = jumpAnimationId
+                
+                -- Apply new preset values
+                idleAnimationId = "70375165570005"
+                runAnimationId = "85987359953457"
+                jumpAnimationId = "90476847588208"
+                
+                -- Update input boxes if they exist (with clearing first)
+                if idleIdBox then 
+                    idleIdBox.Text = ""
+                    task.wait(0.05) -- Small delay to ensure clear takes effect
+                    idleIdBox.Text = idleAnimationId 
+                end
+                if runIdBox then 
+                    runIdBox.Text = ""
+                    task.wait(0.05)
+                    runIdBox.Text = runAnimationId 
+                end
+                if jumpIdBox then 
+                    jumpIdBox.Text = ""
+                    task.wait(0.05)
+                    jumpIdBox.Text = jumpAnimationId 
+                end
+                
+                print("Set Zombie animation presets")
+            end
+            
+            -- Make sure all animations are properly reset
+            if originalAnimateScript then
+                originalAnimateScript.Disabled = true -- Ensure default animations are disabled
+            end
+            
+            -- Save the updated animation IDs
+            saveCustomAnimations()
+            
+            -- Force play the new idle animation
+            task.wait(0.1) -- Small delay to ensure everything is reset
+            if ghostClone and ghostEnabled then
+                playFakeAnimation(idleAnimationId, true) -- Force play the new idle animation
+            end
+        end)
+        
+        -- Ensure animation state gets reset if mouse leaves while pressed
+        icon.MouseLeave:Connect(function()
+            task.delay(0.5, function()
+                isAnimating = false
+            end)
+        end)
+        
+        return icon
+    end
+    
+    -- Calculate evenly spaced positions for each icon
+    local iconSpacing = usableWidth / (totalIcons - 1)
+    
+    -- Game icons data: name and getter function
+    local iconData = {
+        {name = "Garry's Mod", getFunc = getGmodLogoAsContent},
+        {name = "Minecraft", getFunc = getMinecraftIconAsContent},
+        {name = "Mario", getFunc = getMarioIconAsContent},
+        {name = "Sonic", getFunc = getSonicIconAsContent},
+        {name = "Zombie", getFunc = getZombieIconAsContent}
+    }
+    
+    -- Create all icons with evenly spaced positions
+    local icons = {}
+    for i, data in ipairs(iconData) do
+        -- Calculate position - evenly distribute across the usable width
+        local xPosition = leftMargin + (i-1) * (usableWidth / (totalIcons - 1))
+        
+        -- Create the game icon
+        icons[data.name] = createGameIcon(
+            UDim2.new(xPosition, 0, baseYPosition, baseYOffset),
+            data.getFunc,
+            data.name
+        )
+    end
 
     local speedSection = Instance.new("Frame")
     speedSection.Name = "SpeedSection" -- Add name for easier referencing
@@ -3885,14 +4509,6 @@ local function createCustomAnimationsGui()
     speedSection.BackgroundTransparency = 1
     speedSection.Parent = contentFrame
 
-    local speedLabel = Instance.new("TextLabel")
-    speedLabel.Size = UDim2.new(1, 0, 0, 20)
-    speedLabel.Text = "Animation Speed: 100%"
-    speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    speedLabel.TextSize = 14
-    speedLabel.Font = Enum.Font.GothamMedium
-    speedLabel.BackgroundTransparency = 1
-    speedLabel.Parent = speedSection
 
     local speedSliderBG = Instance.new("Frame")
     speedSliderBG.Size = UDim2.new(1, 0, 0, 6)
@@ -3931,7 +4547,6 @@ local function createCustomAnimationsGui()
         tween:Play()
         local handleTween = TweenService:Create(speedSliderHandle, tweenInfo, {Position = UDim2.new(math.clamp(fillValue, 0, 1), -8, 0.5, -8)})
         handleTween:Play()
-        speedLabel.Text = "Animation Speed: " .. math.floor(value * 100) .. "%"
         animationState.speed = value
     end
 
@@ -4261,12 +4876,16 @@ local function createCustomAnimationsGui()
             -- Reset edit page element transparencies before showing
             editPage.BackgroundTransparency = 1
             for _, child in pairs(editPage:GetDescendants()) do
-                if child:IsA("GuiObject") and not child:IsA("UICorner") then
+                -- Skip game icons completely
+                if child:IsA("GuiObject") and not child:IsA("UICorner") and not child.Name:match("^GameIcon_") then
                     if child:IsA("TextLabel") or child:IsA("TextButton") then
                         child.TextTransparency = 1
                     elseif child:IsA("TextBox") then
                         child.TextTransparency = 1
                         child.BackgroundTransparency = 1
+                    elseif child:IsA("ImageLabel") or child:IsA("ImageButton") then
+                        child.BackgroundTransparency = 1
+                        child.ImageTransparency = 1
                     else
                         child.BackgroundTransparency = 1
                     end
@@ -4278,12 +4897,41 @@ local function createCustomAnimationsGui()
             -- Fade in edit page
             for _, child in pairs(editPage:GetDescendants()) do
                 if child:IsA("GuiObject") and not child:IsA("UICorner") then
-                    if child:IsA("TextLabel") or child:IsA("TextButton") then
-                        TweenService:Create(child, tweenInfoFade, {TextTransparency = 0}):Play()
-                    elseif child:IsA("TextBox") then
-                        TweenService:Create(child, tweenInfoFade, {TextTransparency = 0, BackgroundTransparency = 0}):Play()
+                    if child.Name:match("^GameIcon_") then
+                        -- Special animation for game icons - fade in with a slight delay for cascading effect
+                        local iconIndex = 0
+                        for i, gameIcon in ipairs({"Garry's Mod", "Minecraft", "Mario", "Sonic", "Zombie"}) do
+                            if child.Name == "GameIcon_" .. gameIcon then
+                                iconIndex = i
+                                break
+                            end
+                        end
+                        
+                        -- Fade in with staggered timing (0.05s delay between each icon)
+                        local iconDelay = 0.05 * (iconIndex - 1)
+                        
+                        -- First make sure icon is the right size but transparent
+                        child.Size = UDim2.new(0, iconBaseSize, 0, iconBaseSize)
+                        child.ImageTransparency = 1
+                        
+                        -- Create a custom tween info with the delay
+                        local iconTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, iconDelay)
+                        
+                        -- Apply the fade-in tween
+                        TweenService:Create(child, iconTweenInfo, {ImageTransparency = 0}):Play()
                     else
-                        TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 0}):Play()
+                        -- Standard UI elements
+                        if child:IsA("TextLabel") or child:IsA("TextButton") then
+                            TweenService:Create(child, tweenInfoFade, {TextTransparency = 0}):Play()
+                        elseif child:IsA("TextBox") then
+                            TweenService:Create(child, tweenInfoFade, {TextTransparency = 0, BackgroundTransparency = 0}):Play()
+                        elseif child:IsA("ImageButton") or child:IsA("ImageLabel") then
+                            -- For regular image elements, tween both background and image
+                            TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 0, ImageTransparency = 0}):Play()
+                        else
+                            -- For everything else
+                            TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 0}):Play()
+                        end
                     end
                 end
             end
@@ -4298,18 +4946,43 @@ local function createCustomAnimationsGui()
         -- Fade out edit page immediately
         for _, child in pairs(editPage:GetDescendants()) do
             if child:IsA("GuiObject") and not child:IsA("UICorner") then
-                if child:IsA("TextLabel") or child:IsA("TextButton") then
-                    TweenService:Create(child, tweenInfoFade, {TextTransparency = 1}):Play()
-                elseif child:IsA("TextBox") then
-                    TweenService:Create(child, tweenInfoFade, {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+                if child.Name:match("^GameIcon_") then
+                    -- Special animation for game icons with reverse cascade
+                    local iconIndex = 0
+                    for i, gameIcon in ipairs({"Zombie", "Sonic", "Mario", "Minecraft", "Garry's Mod"}) do
+                        if child.Name == "GameIcon_" .. gameIcon then
+                            iconIndex = i
+                            break
+                        end
+                    end
+                    
+                    -- Fade out with staggered timing (0.05s delay between each icon, reverse order)
+                    local iconDelay = 0.05 * (iconIndex - 1)
+                    
+                    -- Create a custom tween info with the delay
+                    local iconTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, iconDelay)
+                    
+                    -- Apply the fade-out tween - slightly faster than fade-in
+                    TweenService:Create(child, iconTweenInfo, {ImageTransparency = 1}):Play()
                 else
-                    TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 1}):Play()
+                    -- Standard UI elements
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        TweenService:Create(child, tweenInfoFade, {TextTransparency = 1}):Play()
+                    elseif child:IsA("TextBox") then
+                        TweenService:Create(child, tweenInfoFade, {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+                    elseif child:IsA("ImageButton") or child:IsA("ImageLabel") then
+                        -- For regular image elements
+                        TweenService:Create(child, tweenInfoFade, {ImageTransparency = 1}):Play()
+                    else
+                        TweenService:Create(child, tweenInfoFade, {BackgroundTransparency = 1}):Play()
+                    end
                 end
             end
         end
         
         -- After fade out completes, restore the main content
-        task.delay(0.3, function()
+        -- Increase delay to give more time for the icons to fade out (0.5s instead of 0.3s)
+        task.delay(0.5, function()
             -- Hide edit page completely
             editPage.Visible = false
             
