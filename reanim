@@ -6160,10 +6160,9 @@ local function fadeInGui(gui, duration, mainFrame, shadowContainer, finalMainPos
     end
 end
 
--- Modified preloading to fade in GUI after loading
+-- Modified preloading to fade in GUI immediately without waiting for audio downloads
 local function initializePreloadingAndShowGui()
-    initializePreloading() -- Your existing preloading function
-    -- Create the GUIs after preloading
+    -- Create the GUIs immediately
     local animationListGui = createAnimationListGui()
     local customAnimationsGui = createCustomAnimationsGui()
     local mainGui, mainFrame, shadowContainer = createDraggableGui(
@@ -6176,6 +6175,13 @@ local function initializePreloadingAndShowGui()
     local finalMainPos = UDim2.new(0.5, -160, 0.5, -130)
     local finalShadowPos = UDim2.new(0.5, -176, 0.5, -146)
     fadeInGui(mainGui, 0.5, mainFrame, shadowContainer, finalMainPos, finalShadowPos)
+    
+    -- Start preloading in a separate thread after GUI is shown
+    task.spawn(function()
+        -- Wait a short time to ensure GUI is fully loaded
+        task.wait(0.1)
+        initializePreloading() -- Your existing preloading function
+    end)
 end
 
 task.spawn(initializePreloadingAndShowGui)
