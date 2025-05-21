@@ -112,8 +112,65 @@ local function activateBodyCopy(target)
         end
     end
     
-    if ReplicatedStorage:FindFirstChild("RagdollEvent") then
-        ReplicatedStorage.RagdollEvent:FireServer()
+    local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
+    local Packets = nil
+    
+    if not hasDefaultRagdollEvents then
+        -- Try multiple possible paths to find the Packets module
+        local possiblePaths = {
+            -- Standard path with WaitForChild
+            function()
+                return require(ReplicatedStorage:WaitForChild("LocalModules"):WaitForChild("Backend"):WaitForChild("Packets"))
+            end,
+            -- Direct access path
+            function()
+                if ReplicatedStorage:FindFirstChild("LocalModules") and 
+                   ReplicatedStorage.LocalModules:FindFirstChild("Backend") and 
+                   ReplicatedStorage.LocalModules.Backend:FindFirstChild("Packets") then
+                    return require(ReplicatedStorage.LocalModules.Backend.Packets)
+                end
+                return nil
+            end,
+            -- FindFirstChild with true flag (recursive search)
+            function()
+                local packetsModule = ReplicatedStorage:FindFirstChild("Packets", true)
+                if packetsModule and packetsModule:IsA("ModuleScript") then
+                    return require(packetsModule)
+                end
+                return nil
+            end,
+            -- Search in game
+            function()
+                local packetsModule = game:FindFirstChild("Packets", true)
+                if packetsModule and packetsModule:IsA("ModuleScript") then
+                    return require(packetsModule)
+                end
+                return nil
+            end
+        }
+        
+        for i, pathFunc in ipairs(possiblePaths) do
+            local success, result = pcall(pathFunc)
+            if success and result then
+                Packets = result
+                break
+            end
+        end
+        
+        if not Packets then
+            warn("Failed to load Packets module from any location! Ragdoll functionality may not work properly.")
+        end
+    end
+    
+    if hasDefaultRagdollEvents then
+        if ReplicatedStorage:FindFirstChild("RagdollEvent") then
+            ReplicatedStorage.RagdollEvent:FireServer()
+        else
+            warn("RagdollEvent not found!")
+        end
+    elseif Packets then
+        LocalPlayer:SetAttribute("TurnHead", false)
+        Packets.Ragdoll:Fire(true)
     end
     
     if target.Character and target.Character:FindFirstChild("Humanoid") then
@@ -171,8 +228,64 @@ local function deactivateBodyCopy()
         updateConnection = nil
     end
     Workspace.Gravity = 196.2
-    if ReplicatedStorage:FindFirstChild("UnragdollEvent") then
-        ReplicatedStorage.UnragdollEvent:FireServer()
+    local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
+    local Packets = nil
+    
+    if not hasDefaultRagdollEvents then
+        -- Try multiple possible paths to find the Packets module
+        local possiblePaths = {
+            -- Standard path with WaitForChild
+            function()
+                return require(ReplicatedStorage:WaitForChild("LocalModules"):WaitForChild("Backend"):WaitForChild("Packets"))
+            end,
+            -- Direct access path
+            function()
+                if ReplicatedStorage:FindFirstChild("LocalModules") and 
+                   ReplicatedStorage.LocalModules:FindFirstChild("Backend") and 
+                   ReplicatedStorage.LocalModules.Backend:FindFirstChild("Packets") then
+                    return require(ReplicatedStorage.LocalModules.Backend.Packets)
+                end
+                return nil
+            end,
+            -- FindFirstChild with true flag (recursive search)
+            function()
+                local packetsModule = ReplicatedStorage:FindFirstChild("Packets", true)
+                if packetsModule and packetsModule:IsA("ModuleScript") then
+                    return require(packetsModule)
+                end
+                return nil
+            end,
+            -- Search in game
+            function()
+                local packetsModule = game:FindFirstChild("Packets", true)
+                if packetsModule and packetsModule:IsA("ModuleScript") then
+                    return require(packetsModule)
+                end
+                return nil
+            end
+        }
+        
+        for i, pathFunc in ipairs(possiblePaths) do
+            local success, result = pcall(pathFunc)
+            if success and result then
+                Packets = result
+                break
+            end
+        end
+        
+        if not Packets then
+            warn("Failed to load Packets module from any location! Ragdoll functionality may not work properly.")
+        end
+    end
+    
+    if hasDefaultRagdollEvents then
+        if ReplicatedStorage:FindFirstChild("UnragdollEvent") then
+            ReplicatedStorage.UnragdollEvent:FireServer()
+        else
+            warn("UnragdollEvent not found!")
+        end
+    elseif Packets then
+        Packets.Ragdoll:Fire(false)
     end
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") then
@@ -326,8 +439,67 @@ local function setGhostEnabled(newState)
         if ghostHumanoid then Workspace.CurrentCamera.CameraSubject = ghostHumanoid end
         restoreGuis()
         if originalAnimateScript and originalAnimateScript.Parent == ghostClone then originalAnimateScript.Disabled = false end
-        ReplicatedStorage.RagdollEvent:FireServer()
-
+        local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
+        local Packets = nil
+        
+        if not hasDefaultRagdollEvents then
+            -- Try multiple possible paths to find the Packets module
+            local possiblePaths = {
+                -- Standard path with WaitForChild
+                function()
+                    return require(ReplicatedStorage:WaitForChild("LocalModules"):WaitForChild("Backend"):WaitForChild("Packets"))
+                end,
+                -- Direct access path
+                function()
+                    if ReplicatedStorage:FindFirstChild("LocalModules") and 
+                       ReplicatedStorage.LocalModules:FindFirstChild("Backend") and 
+                       ReplicatedStorage.LocalModules.Backend:FindFirstChild("Packets") then
+                        return require(ReplicatedStorage.LocalModules.Backend.Packets)
+                    end
+                    return nil
+                end,
+                -- FindFirstChild with true flag (recursive search)
+                function()
+                    local packetsModule = ReplicatedStorage:FindFirstChild("Packets", true)
+                    if packetsModule and packetsModule:IsA("ModuleScript") then
+                        return require(packetsModule)
+                    end
+                    return nil
+                end,
+                -- Search in game
+                function()
+                    local packetsModule = game:FindFirstChild("Packets", true)
+                    if packetsModule and packetsModule:IsA("ModuleScript") then
+                        return require(packetsModule)
+                    end
+                    return nil
+                end
+            }
+            
+            for i, pathFunc in ipairs(possiblePaths) do
+                local success, result = pcall(pathFunc)
+                if success and result then
+                    Packets = result
+                    break
+                end
+            end
+            
+            if not Packets then
+                warn("Failed to load Packets module from any location! Ragdoll functionality may not work properly.")
+            end
+        end
+        
+        if hasDefaultRagdollEvents then
+            if ReplicatedStorage:FindFirstChild("RagdollEvent") then
+                ReplicatedStorage.RagdollEvent:FireServer()
+            else
+                warn("RagdollEvent not found!")
+            end
+        elseif Packets then
+            LocalPlayer:SetAttribute("TurnHead", false)
+            Packets.Ragdoll:Fire(true)
+        end
+        
         targetPositions = {}
         previousPositions = {}
         lastUpdateTime = tick()
@@ -341,7 +513,123 @@ local function setGhostEnabled(newState)
         if snakeUpdateConnection then snakeUpdateConnection:Disconnect(); snakeUpdateConnection = nil end
         if snakeRenderStepConnection then snakeRenderStepConnection:Disconnect(); snakeRenderStepConnection = nil end
 
-        ReplicatedStorage.UnragdollEvent:FireServer()
+        local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
+        local Packets = nil
+        
+        if not hasDefaultRagdollEvents then
+            -- Try multiple possible paths to find the Packets module
+            local possiblePaths = {
+                -- Standard path with WaitForChild
+                function()
+                    return require(ReplicatedStorage:WaitForChild("LocalModules"):WaitForChild("Backend"):WaitForChild("Packets"))
+                end,
+                -- Direct access path
+                function()
+                    if ReplicatedStorage:FindFirstChild("LocalModules") and 
+                       ReplicatedStorage.LocalModules:FindFirstChild("Backend") and 
+                       ReplicatedStorage.LocalModules.Backend:FindFirstChild("Packets") then
+                        return require(ReplicatedStorage.LocalModules.Backend.Packets)
+                    end
+                    return nil
+                end,
+                -- FindFirstChild with true flag (recursive search)
+                function()
+                    local packetsModule = ReplicatedStorage:FindFirstChild("Packets", true)
+                    if packetsModule and packetsModule:IsA("ModuleScript") then
+                        return require(packetsModule)
+                    end
+                    return nil
+                end,
+                -- Search in game
+                function()
+                    local packetsModule = game:FindFirstChild("Packets", true)
+                    if packetsModule and packetsModule:IsA("ModuleScript") then
+                        return require(packetsModule)
+                    end
+                    return nil
+                end
+            }
+            
+            for i, pathFunc in ipairs(possiblePaths) do
+                local success, result = pcall(pathFunc)
+                if success and result then
+                    Packets = result
+                    break
+                end
+            end
+            
+            if not Packets then
+                warn("Failed to load Packets module from any location! Ragdoll functionality may not work properly.")
+            end
+        end
+        
+        if hasDefaultRagdollEvents then
+            if ReplicatedStorage:FindFirstChild("UnragdollEvent") then
+                local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
+                local Packets = nil
+                
+                if not hasDefaultRagdollEvents then
+                    -- Try multiple possible paths to find the Packets module
+                    local possiblePaths = {
+                        -- Standard path with WaitForChild
+                        function()
+                            return require(ReplicatedStorage:WaitForChild("LocalModules"):WaitForChild("Backend"):WaitForChild("Packets"))
+                        end,
+                        -- Direct access path
+                        function()
+                            if ReplicatedStorage:FindFirstChild("LocalModules") and 
+                               ReplicatedStorage.LocalModules:FindFirstChild("Backend") and 
+                               ReplicatedStorage.LocalModules.Backend:FindFirstChild("Packets") then
+                                return require(ReplicatedStorage.LocalModules.Backend.Packets)
+                            end
+                            return nil
+                        end,
+                        -- FindFirstChild with true flag (recursive search)
+                        function()
+                            local packetsModule = ReplicatedStorage:FindFirstChild("Packets", true)
+                            if packetsModule and packetsModule:IsA("ModuleScript") then
+                                return require(packetsModule)
+                            end
+                            return nil
+                        end,
+                        -- Search in game
+                        function()
+                            local packetsModule = game:FindFirstChild("Packets", true)
+                            if packetsModule and packetsModule:IsA("ModuleScript") then
+                                return require(packetsModule)
+                            end
+                            return nil
+                        end
+                    }
+                    
+                    for i, pathFunc in ipairs(possiblePaths) do
+                        local success, result = pcall(pathFunc)
+                        if success and result then
+                            Packets = result
+                            break
+                        end
+                    end
+                    
+                    if not Packets then
+                        warn("Failed to load Packets module from any location! Ragdoll functionality may not work properly.")
+                    end
+                end
+                
+                if hasDefaultRagdollEvents then
+                    if ReplicatedStorage:FindFirstChild("UnragdollEvent") then
+                        ReplicatedStorage.UnragdollEvent:FireServer()
+                    else
+                        warn("UnragdollEvent not found!")
+                    end
+                elseif Packets then
+                    Packets.Ragdoll:Fire(false)
+                end
+            else
+                warn("UnragdollEvent not found!")
+            end
+        elseif Packets then
+            Packets.Ragdoll:Fire(false)
+        end
 
         local targetCFrame = originalCFrame
         local ghostPrimary = ghostClone.PrimaryPart
