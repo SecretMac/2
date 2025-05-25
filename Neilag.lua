@@ -691,8 +691,8 @@ local function toggleRagdoll()
         end
 
         if lagToggled then
-            lastModifiedUsername = "elijahcole2004"
-            ModifyUsername_upvr:FireServer("elijahcole2004")
+            lastModifiedUsername = "24k_mxtty1"
+            ModifyUsername_upvr:FireServer("24k_mxtty1")
             wait(1)
         else
             ToggleDisallowEvent:FireServer()
