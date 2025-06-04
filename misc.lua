@@ -112,7 +112,7 @@ local function activateBodyCopy(target)
         end
     end
     
-    local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
+    local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("Ragdoll") and ReplicatedStorage:FindFirstChild("Unragdoll")
     local Packets = nil
     
     if not hasDefaultRagdollEvents then
@@ -163,10 +163,11 @@ local function activateBodyCopy(target)
     end
     
     if hasDefaultRagdollEvents then
-        if ReplicatedStorage:FindFirstChild("RagdollEvent") then
-            ReplicatedStorage.RagdollEvent:FireServer()
+        if ReplicatedStorage:FindFirstChild("Ragdoll") then
+            -- Use the new ragdoll event with "Ball" parameter
+            ReplicatedStorage.Ragdoll:FireServer("Ball")
         else
-            warn("RagdollEvent not found!")
+            warn("Ragdoll event not found!")
         end
     elseif Packets then
         LocalPlayer:SetAttribute("TurnHead", false)
@@ -228,7 +229,7 @@ local function deactivateBodyCopy()
         updateConnection = nil
     end
     Workspace.Gravity = 196.2
-    local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
+    local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("Ragdoll") and ReplicatedStorage:FindFirstChild("Unragdoll")
     local Packets = nil
     
     if not hasDefaultRagdollEvents then
@@ -279,14 +280,15 @@ local function deactivateBodyCopy()
     end
     
     if hasDefaultRagdollEvents then
-        if ReplicatedStorage:FindFirstChild("UnragdollEvent") then
-            ReplicatedStorage.UnragdollEvent:FireServer()
+        if ReplicatedStorage:FindFirstChild("Unragdoll") then
+            ReplicatedStorage.Unragdoll:FireServer()
         else
-            warn("UnragdollEvent not found!")
+            warn("Unragdoll event not found!")
         end
     elseif Packets then
         Packets.Ragdoll:Fire(false)
     end
+    
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") then
         Workspace.CurrentCamera.CameraSubject = char.Humanoid
@@ -439,7 +441,7 @@ local function setGhostEnabled(newState)
         if ghostHumanoid then Workspace.CurrentCamera.CameraSubject = ghostHumanoid end
         restoreGuis()
         if originalAnimateScript and originalAnimateScript.Parent == ghostClone then originalAnimateScript.Disabled = false end
-        local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
+        local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("Ragdoll") and ReplicatedStorage:FindFirstChild("Unragdoll")
         local Packets = nil
         
         if not hasDefaultRagdollEvents then
@@ -490,10 +492,11 @@ local function setGhostEnabled(newState)
         end
         
         if hasDefaultRagdollEvents then
-            if ReplicatedStorage:FindFirstChild("RagdollEvent") then
-                ReplicatedStorage.RagdollEvent:FireServer()
+            if ReplicatedStorage:FindFirstChild("Ragdoll") then
+                -- Use the new ragdoll event with "Ball" parameter
+                ReplicatedStorage.Ragdoll:FireServer("Ball")
             else
-                warn("RagdollEvent not found!")
+                warn("Ragdoll event not found!")
             end
         elseif Packets then
             LocalPlayer:SetAttribute("TurnHead", false)
@@ -513,7 +516,7 @@ local function setGhostEnabled(newState)
         if snakeUpdateConnection then snakeUpdateConnection:Disconnect(); snakeUpdateConnection = nil end
         if snakeRenderStepConnection then snakeRenderStepConnection:Disconnect(); snakeRenderStepConnection = nil end
 
-        local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
+        local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("Ragdoll") and ReplicatedStorage:FindFirstChild("Unragdoll")
         local Packets = nil
         
         if not hasDefaultRagdollEvents then
@@ -564,68 +567,10 @@ local function setGhostEnabled(newState)
         end
         
         if hasDefaultRagdollEvents then
-            if ReplicatedStorage:FindFirstChild("UnragdollEvent") then
-                local hasDefaultRagdollEvents = ReplicatedStorage:FindFirstChild("RagdollEvent") and ReplicatedStorage:FindFirstChild("UnragdollEvent")
-                local Packets = nil
-                
-                if not hasDefaultRagdollEvents then
-                    -- Try multiple possible paths to find the Packets module
-                    local possiblePaths = {
-                        -- Standard path with WaitForChild
-                        function()
-                            return require(ReplicatedStorage:WaitForChild("LocalModules"):WaitForChild("Backend"):WaitForChild("Packets"))
-                        end,
-                        -- Direct access path
-                        function()
-                            if ReplicatedStorage:FindFirstChild("LocalModules") and 
-                               ReplicatedStorage.LocalModules:FindFirstChild("Backend") and 
-                               ReplicatedStorage.LocalModules.Backend:FindFirstChild("Packets") then
-                                return require(ReplicatedStorage.LocalModules.Backend.Packets)
-                            end
-                            return nil
-                        end,
-                        -- FindFirstChild with true flag (recursive search)
-                        function()
-                            local packetsModule = ReplicatedStorage:FindFirstChild("Packets", true)
-                            if packetsModule and packetsModule:IsA("ModuleScript") then
-                                return require(packetsModule)
-                            end
-                            return nil
-                        end,
-                        -- Search in game
-                        function()
-                            local packetsModule = game:FindFirstChild("Packets", true)
-                            if packetsModule and packetsModule:IsA("ModuleScript") then
-                                return require(packetsModule)
-                            end
-                            return nil
-                        end
-                    }
-                    
-                    for i, pathFunc in ipairs(possiblePaths) do
-                        local success, result = pcall(pathFunc)
-                        if success and result then
-                            Packets = result
-                            break
-                        end
-                    end
-                    
-                    if not Packets then
-                        warn("Failed to load Packets module from any location! Ragdoll functionality may not work properly.")
-                    end
-                end
-                
-                if hasDefaultRagdollEvents then
-                    if ReplicatedStorage:FindFirstChild("UnragdollEvent") then
-                        ReplicatedStorage.UnragdollEvent:FireServer()
-                    else
-                        warn("UnragdollEvent not found!")
-                    end
-                elseif Packets then
-                    Packets.Ragdoll:Fire(false)
-                end
+            if ReplicatedStorage:FindFirstChild("Unragdoll") then
+                ReplicatedStorage.Unragdoll:FireServer()
             else
-                warn("UnragdollEvent not found!")
+                warn("Unragdoll event not found!")
             end
         elseif Packets then
             Packets.Ragdoll:Fire(false)
@@ -652,6 +597,8 @@ local function setGhostEnabled(newState)
             preserveGuis()
             LocalPlayer.Character = originalCharacter
             if origHumanoid then
+                -- Kill the original character for proper reset
+                origHumanoid.Health = 0
                 Workspace.CurrentCamera.CameraSubject = origHumanoid
                 origHumanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
             end
